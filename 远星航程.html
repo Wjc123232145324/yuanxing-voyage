@@ -541,6 +541,20 @@ input[type="range"]::-moz-range-thumb{transition:transform .2s var(--e-out),box-
 .field select:focus,.field input:focus,.field textarea:focus{box-shadow:0 0 0 2px rgba(240,163,62,.14)}
 .mission:hover,.set-row:hover{background:rgba(255,255,255,.012)}
 
+/* ---------- 云端账号 ---------- */
+.cloud-fields{display:grid;gap:9px;margin-top:2px}
+.cloud-input{width:100%;min-height:44px;padding:0 12px;background:var(--deck);border:1px solid var(--steel);
+  color:var(--star);font-size:13.5px;font-family:var(--font-mono);letter-spacing:.02em;border-radius:2px;
+  transition:border-color .26s var(--e-soft),box-shadow .26s var(--e-out)}
+.cloud-input:focus{outline:none;border-color:var(--beacon-deep);box-shadow:0 0 0 2px rgba(240,163,62,.14)}
+.cloud-acts{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:4px}
+.cloud-msg{font-size:12px;line-height:1.6;color:var(--dust);min-height:16px}
+.cloud-msg.is-bad{color:#E99477}
+.cloud-msg.is-ok{color:var(--beacon)}
+.cloud-hint{margin:2px 0 0;font-size:11px;line-height:1.75;color:var(--dust-dim)}
+.cloud-hint code{font-family:var(--font-mono);color:var(--dust)}
+.cloud-who{font-family:var(--font-mono);font-size:13px;color:var(--star);overflow-wrap:anywhere}
+
 /* ================= 动效层：丝滑设定 ================= */
 :root{
   --e-out:cubic-bezier(.22,1,.36,1);
@@ -909,6 +923,57 @@ body.is-reveal .stat-row{animation:panel-in .62s .24s var(--e-out) both}
 
     <!-- ========== 视图：设置 ========== -->
     <section class="view" id="view-settings" data-title="设置">
+
+      <section class="set-group" id="cloudGroup">
+        <h3>云端账号</h3>
+
+        <div class="set-row is-wide" id="cloudSetup">
+          <div class="label">
+            <b>连接你的 Supabase 项目</b>
+            <small>填 Project URL 与 anon public key。密码由 Supabase 校验，本页面不保存密码明文。</small>
+          </div>
+          <div class="cloud-fields">
+            <input class="cloud-input" id="cloudUrl" type="url" placeholder="https://xxxx.supabase.co" autocomplete="off" spellcheck="false">
+            <input class="cloud-input" id="cloudKey" type="text" placeholder="anon public key" autocomplete="off" spellcheck="false">
+            <div class="cloud-acts">
+              <button class="btn btn-sm" id="cloudSaveBtn" type="button">连接并保存</button>
+              <span class="cloud-msg" id="cloudSetupMsg"></span>
+            </div>
+            <p class="cloud-hint">先在该项目里建 <code>voyages</code> 表并开启行级权限，SQL 与步骤见仓库 README 的「云端账号」一节。</p>
+          </div>
+        </div>
+
+        <div class="set-row is-wide" id="cloudAuth" hidden>
+          <div class="label">
+            <b>登录 / 注册</b>
+            <small>登录后航段、任务、设置会同步到你的 Supabase 项目，换设备也能接着飞。</small>
+          </div>
+          <div class="cloud-fields">
+            <input class="cloud-input" id="cloudEmail" type="email" placeholder="邮箱" autocomplete="username">
+            <input class="cloud-input" id="cloudPass" type="password" placeholder="密码（至少 6 位）" autocomplete="current-password">
+            <div class="cloud-acts">
+              <button class="btn btn-sm btn-primary" id="cloudLoginBtn" type="button">登录</button>
+              <button class="btn btn-sm" id="cloudSignupBtn" type="button">注册</button>
+              <button class="btn btn-sm btn-ghost" id="cloudForgetBtn" type="button">换个项目</button>
+              <span class="cloud-msg" id="cloudMsg"></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="set-row is-wide" id="cloudAccount" hidden>
+          <div class="label">
+            <b>已连接</b>
+            <small class="cloud-who" id="cloudWho"></small>
+          </div>
+          <div class="cloud-acts">
+            <button class="btn btn-sm" id="cloudPushBtn" type="button">上传本地</button>
+            <button class="btn btn-sm" id="cloudPullBtn" type="button">从云端恢复</button>
+            <button class="btn btn-sm btn-ghost" id="cloudOutBtn" type="button">退出登录</button>
+          </div>
+          <span class="cloud-msg" id="cloudSyncMsg" style="margin-top:8px;display:block"></span>
+        </div>
+      </section>
+
       <section class="set-group">
         <h3>航程设置</h3>
 
@@ -1148,6 +1213,7 @@ let S = loadState();
 let saveTimer = null;
 function save() {
   try { localStorage.setItem(STORE_KEY, JSON.stringify(S)); } catch (err) { /* 存储不可用时静默降级 */ }
+  scheduleCloudPush();
 }
 function saveSoon() {
   if (saveTimer) return;
@@ -1816,6 +1882,225 @@ function renderBadges() {
 }
 
 /* ---------- 设置 ---------- */
+/* ---------- 云端账号（Supabase 直连，无自建服务端） ---------- */
+const CLOUD_CFG_KEY = 'yx-cloud-config';
+const CLOUD_TABLE = 'voyages';
+const CLOUD_SDK = 'https://fastly.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js';
+let cloudCfg = null;
+let cloudClient = null;
+let cloudUser = null;
+let cloudPushTimer = null;
+let cloudSyncAt = 0;
+
+function loadCloudCfg() {
+  try { cloudCfg = JSON.parse(localStorage.getItem(CLOUD_CFG_KEY) || 'null'); } catch (e) { cloudCfg = null; }
+  if (!cloudCfg || !cloudCfg.url || !cloudCfg.key) cloudCfg = null;
+  return cloudCfg;
+}
+function writeCloudCfg(cfg) {
+  cloudCfg = cfg;
+  try {
+    if (cfg) localStorage.setItem(CLOUD_CFG_KEY, JSON.stringify(cfg));
+    else localStorage.removeItem(CLOUD_CFG_KEY);
+  } catch (e) { /* 忽略 */ }
+}
+function setCloudMsg(el, text, kind) {
+  if (!el) return;
+  el.textContent = text || '';
+  el.className = 'cloud-msg' + (kind ? ' is-' + kind : '');
+  if (el.id === 'cloudSyncMsg') el.style.display = 'block';
+}
+function nowLabel() {
+  const d = new Date();
+  return pad2(d.getHours()) + ':' + pad2(d.getMinutes());
+}
+
+function loadCloudSdk(cb) {
+  if (window.supabase && window.supabase.createClient) return cb(true);
+  let done = false;
+  const s = document.createElement('script');
+  s.src = CLOUD_SDK;
+  s.async = true;
+  s.onload = function () { if (!done) { done = true; cb(!!(window.supabase && window.supabase.createClient)); } };
+  s.onerror = function () { if (!done) { done = true; cb(false); } };
+  document.head.appendChild(s);
+}
+
+function connectCloud(cb) {
+  if (!cloudCfg) { if (cb) cb(false); return; }
+  setCloudMsg($('#cloudMsg'), '正在加载云端模块…');
+  loadCloudSdk(function (ok) {
+    if (!ok) {
+      setCloudMsg($('#cloudMsg'), '云端模块没加载出来，可能处于离线状态', 'bad');
+      if (cb) cb(false);
+      return;
+    }
+    try {
+      cloudClient = window.supabase.createClient(cloudCfg.url, cloudCfg.key, {
+        auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false }
+      });
+    } catch (e) {
+      cloudClient = null;
+      setCloudMsg($('#cloudSetupMsg'), '项目地址或密钥格式不对', 'bad');
+      if (cb) cb(false);
+      return;
+    }
+    cloudClient.auth.onAuthStateChange(function (evt, sess) {
+      const was = cloudUser && cloudUser.id;
+      cloudUser = sess ? sess.user : null;
+      renderCloud();
+      if (cloudUser && (!was || was !== cloudUser.id)) afterSignIn();
+    });
+    cloudClient.auth.getSession().then(function (res) {
+      const sess = res && res.data && res.data.session;
+      cloudUser = sess ? sess.user : null;
+      renderCloud();
+      if (cloudUser) afterSignIn();
+      else { setCloudMsg($('#cloudMsg'), ''); if (cb) cb(true); }
+    }).catch(function () { if (cb) cb(true); });
+  });
+}
+
+function cloudPayload() {
+  return {
+    v: S.v,
+    settings: S.settings,
+    missions: S.missions,
+    sessions: S.sessions,
+    currentTaskId: S.currentTaskId
+  };
+}
+
+function adoptCloudData(data, updatedAt) {
+  if (!data || typeof data !== 'object') return false;
+  if (S.active) {
+    setCloudMsg($('#cloudSyncMsg'), '正在计时，先结束或返航再同步', 'bad');
+    return false;
+  }
+  const base = defaultState();
+  S.settings = Object.assign({}, DEFAULT_SETTINGS, data.settings || {});
+  S.missions = Array.isArray(data.missions) ? data.missions : [];
+  S.sessions = Array.isArray(data.sessions) ? data.sessions : [];
+  S.currentTaskId = data.currentTaskId || null;
+  S.active = null;
+  save();
+  renderAll();
+  cloudSyncAt = Date.parse(updatedAt) || Date.now();
+  return true;
+}
+
+function pushCloud(quiet) {
+  if (!cloudClient || !cloudUser) return;
+  const btn = $('#cloudPushBtn');
+  if (btn) btn.disabled = true;
+  setCloudMsg($('#cloudSyncMsg'), '正在上传…');
+  cloudClient.from(CLOUD_TABLE).upsert({
+    user_id: cloudUser.id,
+    data: cloudPayload(),
+    updated_at: new Date().toISOString()
+  }, { onConflict: 'user_id' }).then(function (res) {
+    if (btn) btn.disabled = false;
+    if (res.error) {
+      const e1 = /Failed to fetch|NetworkError/i.test(res.error.message) ? '连不上项目' : res.error.message;
+      setCloudMsg($('#cloudSyncMsg'), '上传失败：' + e1, 'bad');
+      return;
+    }
+    cloudSyncAt = Date.now();
+    setCloudMsg($('#cloudSyncMsg'), (quiet ? '已自动同步 ' : '已上传 ') + nowLabel(), 'ok');
+  });
+}
+
+function pullCloud(silent) {
+  if (!cloudClient || !cloudUser) return;
+  setCloudMsg($('#cloudSyncMsg'), '正在读取云端…');
+  cloudClient.from(CLOUD_TABLE).select('data,updated_at').eq('user_id', cloudUser.id).maybeSingle().then(function (res) {
+    if (res.error) {
+      const e2 = /Failed to fetch|NetworkError/i.test(res.error.message) ? '连不上项目' : res.error.message;
+      setCloudMsg($('#cloudSyncMsg'), '读取失败：' + e2, 'bad');
+      return;
+    }
+    if (!res.data) {
+      setCloudMsg($('#cloudSyncMsg'), '云端还没有记录，先上传本地', '');
+      return;
+    }
+    const ok = adoptCloudData(res.data.data, res.data.updated_at);
+    if (ok) setCloudMsg($('#cloudSyncMsg'), '已从云端恢复 ' + S.sessions.length + ' 段航程', 'ok');
+  });
+}
+
+function afterSignIn() {
+  if (!cloudClient || !cloudUser) return;
+  cloudClient.from(CLOUD_TABLE).select('data,updated_at').eq('user_id', cloudUser.id).maybeSingle().then(function (res) {
+    if (res.error) { setCloudMsg($('#cloudSyncMsg'), '读取云端失败：' + res.error.message, 'bad'); return; }
+    if (!res.data) { pushCloud(false); return; }
+    const remote = (res.data.data && res.data.data.sessions) || [];
+    if (!S.sessions.length && remote.length) {
+      if (adoptCloudData(res.data.data, res.data.updated_at)) {
+        setCloudMsg($('#cloudSyncMsg'), '已从云端恢复 ' + remote.length + ' 段航程', 'ok');
+      }
+    } else if (!remote.length && S.sessions.length) {
+      pushCloud(false);
+    } else if (remote.length && S.sessions.length) {
+      cloudSyncAt = Date.parse(res.data.updated_at) || 0;
+      setCloudMsg($('#cloudSyncMsg'), '云端 ' + remote.length + ' 段 · 本地 ' + S.sessions.length +
+        ' 段，选「上传本地」或「从云端恢复」', '');
+    } else {
+      setCloudMsg($('#cloudSyncMsg'), '两端都还没有航段', '');
+    }
+  });
+}
+
+function scheduleCloudPush() {
+  if (!cloudClient || !cloudUser) return;
+  if (cloudPushTimer) clearTimeout(cloudPushTimer);
+  cloudPushTimer = setTimeout(function () { cloudPushTimer = null; pushCloud(true); }, 3200);
+}
+
+function cloudAuth(mode) {
+  if (!cloudClient) { setCloudMsg($('#cloudMsg'), '还没连上项目', 'bad'); return; }
+  const email = ($('#cloudEmail').value || '').trim();
+  const pass = ($('#cloudPass').value || '').trim();
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { setCloudMsg($('#cloudMsg'), '邮箱格式不对', 'bad'); return; }
+  if (pass.length < 6) { setCloudMsg($('#cloudMsg'), '密码至少 6 位', 'bad'); return; }
+  setCloudMsg($('#cloudMsg'), mode === 'signup' ? '正在注册…' : '正在登录…');
+  const p = mode === 'signup'
+    ? cloudClient.auth.signUp({ email: email, password: pass })
+    : cloudClient.auth.signInWithPassword({ email: email, password: pass });
+  p.then(function (res) {
+    if (res.error) {
+      const m = /Invalid login credentials/i.test(res.error.message) ? '邮箱或密码不正确'
+        : /already registered/i.test(res.error.message) ? '这个邮箱已注册，直接登录'
+        : /Failed to fetch|NetworkError|Load failed/i.test(res.error.message) ? '连不上项目，检查 URL 与网络'
+        : res.error.message;
+      setCloudMsg($('#cloudMsg'), m, 'bad');
+      return;
+    }
+    if (mode === 'signup' && res.data && !res.data.session) {
+      setCloudMsg($('#cloudMsg'), '注册成功，去邮箱点确认链接后再登录', 'ok');
+      return;
+    }
+    setCloudMsg($('#cloudMsg'), '已登录', 'ok');
+  });
+}
+
+function renderCloud() {
+  const setup = $('#cloudSetup'), auth = $('#cloudAuth'), acct = $('#cloudAccount');
+  if (!setup) return;
+  setup.hidden = !!cloudCfg;
+  if (auth) auth.hidden = !(cloudCfg && !cloudUser);
+  if (acct) acct.hidden = !cloudUser;
+  if (!cloudCfg) {
+    const u = $('#cloudUrl'), k = $('#cloudKey');
+    if (u && !u.value) u.value = '';
+    if (k && !k.value) k.value = '';
+  }
+  if (cloudUser) {
+    const who = $('#cloudWho');
+    if (who) who.textContent = (cloudUser.email || '（未命名账号）') + (cloudSyncAt
+      ? ' · 上次同步 ' + nowLabel() : '');
+  }
+}
+
 function renderSettings() {
   const st = S.settings;
   $('#durRange').value = st.duration;
@@ -1832,6 +2117,7 @@ function renderSettings() {
   });
   const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
   $('#iosNote').hidden = !(isIOS && st.ambient !== 'none');
+  renderCloud();
 }
 
 /* ---------- 顶栏与侧栏 ---------- */
@@ -1852,7 +2138,7 @@ function renderMeta() {
     log: '共 ' + S.sessions.length + ' 段 · 完成 ' + m.doneCount + ' 段',
     stats: '累计 ' + m.totalLy + ' 光年 · 当前 ' + SECTORS[m.sectorIdx].name,
     badges: unlocked + ' / ' + BADGES.length + ' 已解锁',
-    settings: '数据仅保存在这台设备的浏览器里'
+    settings: cloudUser ? ('云端账号 ' + (cloudUser.email || '')) : '数据仅保存在这台设备的浏览器里'
   };
   $('#viewSub').textContent = subs[view] || '';
 }
@@ -2245,6 +2531,50 @@ function bindEvents() {
 
   $$('#ambientSeg button').forEach(function (b) {
     b.addEventListener('click', function () { setAmbient(b.dataset.amb); });
+  });
+
+  const cloudSave = $('#cloudSaveBtn');
+  if (cloudSave) cloudSave.addEventListener('click', function () {
+    const url = ($('#cloudUrl').value || '').trim().replace(/\/+$/, '');
+    const key = ($('#cloudKey').value || '').trim();
+    if (!/^https?:\/\/.+\..+/.test(url)) {
+      setCloudMsg($('#cloudSetupMsg'), '填完整项目地址，形如 https://xxxx.supabase.co', 'bad');
+      return;
+    }
+    if (key.length < 20) {
+      setCloudMsg($('#cloudSetupMsg'), 'anon key 看起来不完整', 'bad');
+      return;
+    }
+    writeCloudCfg({ url: url, key: key });
+    setCloudMsg($('#cloudSetupMsg'), '');
+    connectCloud();
+    renderCloud();
+    showToast('云端项目已连接，登录后开始同步');
+  });
+  const cloudLogin = $('#cloudLoginBtn');
+  if (cloudLogin) cloudLogin.addEventListener('click', function () { cloudAuth('signin'); });
+  const cloudSignup = $('#cloudSignupBtn');
+  if (cloudSignup) cloudSignup.addEventListener('click', function () { cloudAuth('signup'); });
+  const cloudForget = $('#cloudForgetBtn');
+  if (cloudForget) cloudForget.addEventListener('click', function () {
+    writeCloudCfg(null);
+    cloudClient = null;
+    cloudUser = null;
+    renderCloud();
+    showToast('已断开云端项目');
+  });
+  const cloudPushBtn = $('#cloudPushBtn');
+  if (cloudPushBtn) cloudPushBtn.addEventListener('click', function () { pushCloud(false); });
+  const cloudPullBtn = $('#cloudPullBtn');
+  if (cloudPullBtn) cloudPullBtn.addEventListener('click', function () { pullCloud(false); });
+  const cloudOut = $('#cloudOutBtn');
+  if (cloudOut) cloudOut.addEventListener('click', function () {
+    if (!cloudClient) return;
+    cloudClient.auth.signOut().then(function () {
+      cloudUser = null;
+      renderCloud();
+      showToast('已退出登录，本地数据保留');
+    });
   });
   $('#ambientSelect').addEventListener('change', function (e) { setAmbient(e.target.value); });
 
@@ -2700,6 +3030,9 @@ function boot() {
   bindEvents();
   applyScene();
   renderMute();
+
+  loadCloudCfg();
+  if (cloudCfg) connectCloud(); else renderCloud();
 
   if (S.active && S.active.running) {
     // 页面被关闭或整页重载，等同于离开驾驶位
