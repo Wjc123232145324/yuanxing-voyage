@@ -1,0 +1,29 @@
+name: Fetch app source
+
+on:
+  push:
+    paths-ignore:
+      - "远星航程.html"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download single-file app
+        run: |
+          curl -sSL --max-time 90 -o "/tmp/app.html" "https://aka.doubaocdn.com/s/nGx6bVqYfw"
+          ls -l /tmp/app.html
+          test "$(stat -c %s /tmp/app.html)" -gt 200000
+          cp /tmp/app.html "远星航程.html"
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "远星航程.html"
+          git commit -m "chore: 同步应用源码（动效层）" || exit 0
+          git push
