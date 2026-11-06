@@ -523,6 +523,103 @@ body.is-cruising .track-fill{animation:track-breathe 3.4s ease-in-out infinite}
 @media (prefers-reduced-motion:reduce){
   *{animation-duration:.001ms !important;animation-iteration-count:1 !important;transition-duration:.001ms !important}
 }
+/* 控件级丝滑：开关 / 滑杆 / 预设键 / 导航按压 */
+.switch{transition:border-color .26s var(--e-soft),background-color .26s var(--e-soft)}
+.switch::after{transition:left .34s var(--e-spring),background-color .26s var(--e-soft)}
+.preset{transition:color .22s var(--e-soft),border-color .26s var(--e-soft),
+  background-color .26s var(--e-soft),transform .16s var(--e-out)}
+.preset:hover{border-color:#2c5169;color:var(--star)}
+.preset:active{transform:scale(.96)}
+input[type="range"]::-webkit-slider-thumb{transition:transform .2s var(--e-out),box-shadow .2s var(--e-out)}
+input[type="range"]:hover::-webkit-slider-thumb{transform:scale(1.18);box-shadow:0 0 0 3px rgba(240,163,62,.16)}
+input[type="range"]::-moz-range-thumb{transition:transform .2s var(--e-out),box-shadow .2s var(--e-out)}
+.rail-link{will-change:color}
+.rail-link:active{transform:scale(.97);transition:transform .12s var(--e-out)}
+.check i{transition:border-color .24s var(--e-soft),background-color .24s var(--e-soft)}
+.field select,.field input,.field textarea{
+  transition:border-color .26s var(--e-soft),background-color .26s var(--e-soft),box-shadow .26s var(--e-out)}
+.field select:focus,.field input:focus,.field textarea:focus{box-shadow:0 0 0 2px rgba(240,163,62,.14)}
+.mission:hover,.set-row:hover{background:rgba(255,255,255,.012)}
+
+/* ================= 动效层：丝滑设定 ================= */
+:root{
+  --e-out:cubic-bezier(.22,1,.36,1);
+  --e-soft:cubic-bezier(.4,0,.2,1);
+  --e-spring:cubic-bezier(.34,1.42,.64,1);
+}
+
+/* 通用按钮：抬升—回弹 */
+.btn{transition:transform .18s var(--e-out), background-color .28s var(--e-soft),
+  border-color .28s var(--e-soft), color .22s var(--e-soft), box-shadow .28s var(--e-out)}
+.btn:hover{transform:translateY(-1px)}
+.btn:active{transform:translateY(1px) scale(.986);transition-duration:.09s}
+.btn:focus-visible{outline:2px solid var(--beacon);outline-offset:3px}
+
+/* 主控键：键程回弹 + 掠过的高光带 */
+.btn-primary{transition:transform .22s var(--e-spring), filter .24s var(--e-out),
+  background .3s var(--e-soft)}
+.btn-primary::before{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;
+  background:linear-gradient(105deg,transparent 36%,rgba(255,246,226,.6) 50%,transparent 64%);
+  transform:translateX(-130%);opacity:0;
+  transition:transform .62s var(--e-out),opacity .3s var(--e-soft)}
+.btn-primary:hover::before{transform:translateX(130%);opacity:1}
+.btn-primary:active::before{opacity:0;transition-duration:.1s}
+
+/* 图标切换：缩放淡入，不是硬切 */
+.btn .ic-play,.btn .ic-pause{animation:icon-in .28s var(--e-out) both}
+@keyframes icon-in{from{opacity:.2;transform:scale(.82)}to{opacity:1;transform:scale(1)}}
+
+/* 图标键 */
+.icon-btn{transition:color .24s var(--e-soft),border-color .28s var(--e-soft),
+  background-color .28s var(--e-soft),transform .18s var(--e-out)}
+.icon-btn:hover{transform:translateY(-1px)}
+.icon-btn:active{transform:translateY(1px) scale(.98)}
+
+/* 环境声分段：滑块跟随 */
+.seg{position:relative}
+.seg-ind{position:absolute;top:0;left:0;height:100%;width:0;pointer-events:none;
+  background:rgba(240,163,62,.12);box-shadow:inset 0 0 0 1px rgba(240,163,62,.22);
+  transition:transform .42s var(--e-out),width .42s var(--e-out)}
+.seg button{position:relative;z-index:1;background:transparent;transition:color .24s var(--e-soft)}
+.seg button[aria-pressed="true"]{background:transparent}
+
+/* 实景/简洁切换 */
+.deck canvas{transition:opacity .42s var(--e-soft)}
+.deck.is-plain canvas{display:block;opacity:0}
+.deck.is-plain::before{animation:plain-in .42s var(--e-soft) both}
+@keyframes plain-in{from{opacity:0}to{opacity:1}}
+.deck-toggle{transition:border-color .28s var(--e-soft),color .24s var(--e-soft),
+  background-color .28s var(--e-soft),transform .16s var(--e-out)}
+.deck-toggle:active{transform:scale(.94)}
+.deck-toggle svg{transition:transform .35s var(--e-spring)}
+.deck-toggle:hover svg{transform:translateY(-1px)}
+
+/* 导航游标：从中心展开 */
+.rail-link{transition:color .22s var(--e-soft),background-color .32s var(--e-soft)}
+.rail-link::before{content:"";position:absolute;left:0;top:50%;width:2px;height:16px;
+  margin-top:-8px;background:var(--beacon);opacity:0;transform:scaleY(.35);
+  transform-origin:center;transition:transform .34s var(--e-out),opacity .24s var(--e-soft)}
+.rail-link[aria-current="page"]::before{opacity:1;transform:scaleY(1)}
+@media (max-width:899px){
+  .rail-link::before{left:50%;top:auto;bottom:0;width:16px;height:2px;margin:0 0 0 -8px;
+    transform:scaleX(.35)}
+  .rail-link[aria-current="page"]::before{transform:scaleX(1)}
+}
+
+/* 浮层 */
+.toast{transition:opacity .3s var(--e-soft),transform .34s var(--e-out)}
+.modal.is-open{animation:backdrop-in .28s linear both}
+.modal.is-open .dialog{animation:dialog-in .36s var(--e-out) both}
+@keyframes backdrop-in{from{opacity:0}to{opacity:1}}
+@keyframes dialog-in{from{opacity:0;transform:translateY(12px) scale(.985)}to{opacity:1;transform:none}}
+
+/* 视图与面板入场：统一 expo 收束 */
+.view.is-active{animation:view-in .44s var(--e-out) both}
+body.is-reveal .console{animation:panel-in .62s var(--e-out) both}
+body.is-reveal .brief{animation:panel-in .62s .08s var(--e-out) both}
+body.is-reveal .starmap-panel{animation:panel-in .62s .16s var(--e-out) both}
+body.is-reveal .stat-row{animation:panel-in .62s .24s var(--e-out) both}
+
 </style>
 </head>
 <body>
@@ -637,6 +734,7 @@ body.is-cruising .track-fill{animation:track-breathe 3.4s ease-in-out infinite}
           <div class="ambient-row">
             <label style="display:block;font-size:11px;letter-spacing:.14em;color:var(--dust-dim);font-family:var(--font-mono);margin-bottom:7px">舱内环境声</label>
             <div class="seg" id="ambientSeg" role="group" aria-label="环境声">
+              <i class="seg-ind" aria-hidden="true"></i>
               <button type="button" data-amb="none" aria-pressed="true">
                 <svg class="amb-ico" viewBox="0 0 20 8" aria-hidden="true"><path d="M2 4h16"/></svg>
                 <span>静默</span>
@@ -1389,6 +1487,7 @@ function renderVoyage() {
   $$('#ambientSeg button').forEach(function (b) {
     b.setAttribute('aria-pressed', S.settings.ambient === b.dataset.amb ? 'true' : 'false');
   });
+  syncAmbientIndicator();
 
   const note = $('#strictNote');
   note.classList.toggle('is-off', !S.settings.strict);
@@ -1768,6 +1867,7 @@ function setView(id) {
   });
   const active = $('#view-' + id);
   if (active) $('#viewTitle').textContent = active.dataset.title || '航行台';
+  if (id === 'voyage') syncAmbientIndicator();
   if (id === 'stats') renderStats();
   if (id === 'badges') renderBadges();
   if (id === 'settings') renderSettings();
@@ -2049,6 +2149,16 @@ function toggleStart() {
   else resumeTimer();
 }
 
+function syncAmbientIndicator() {
+  const seg = $('#ambientSeg');
+  if (!seg) return;
+  const ind = seg.querySelector('.seg-ind');
+  const on = seg.querySelector('button[aria-pressed="true"]');
+  if (!ind || !on) return;
+  ind.style.width = on.offsetWidth + 'px';
+  ind.style.transform = 'translateX(' + (on.offsetLeft - seg.clientLeft) + 'px)';
+}
+
 function setAmbient(kind) {
   S.settings.ambient = kind;
   save();
@@ -2057,6 +2167,7 @@ function setAmbient(kind) {
   else stopAmbient(true);
   renderVoyage();
   renderSettings();
+  syncAmbientIndicator();
   const names = { none: '静默', drift: '深空底噪', engine: '引擎低频' };
   showToast('舱内环境声：' + names[kind]);
 }
@@ -2316,6 +2427,7 @@ function bindEvents() {
   window.addEventListener('hashchange', function () { setView(currentView()); });
 
   window.addEventListener('resize', function () {
+    syncAmbientIndicator();
     Object.keys(charts).forEach(function (k) { if (charts[k]) charts[k].resize(); });
   });
 
