@@ -945,7 +945,7 @@ input:focus,select:focus,.cloud-input:focus{box-shadow:inset 0 0 0 1px rgba(240,
             <div class="readout"><span>预计里程</span><strong id="lyRead">+25 ly</strong></div>
           </div>
 
-          <p class="note" id="strictNote"><span class="dot"></span>严格模式：航行中切出页面，判定紧急返航。</p>
+          <p class="note" id="strictNote"><span class="dot"></span>严格模式：离开 3 秒记一次，3 次或单次 15 秒判返航。</p>
         </div>
       </div>
 
@@ -1133,7 +1133,7 @@ input:focus,select:focus,.cloud-input:focus{box-shadow:inset 0 0 0 1px rgba(240,
         <div class="set-row">
           <div class="label">
             <b>严格模式</b>
-            <small>航行中切出页面或锁屏，立即判定紧急返航，该段不计里程。</small>
+            <small>航行中切走超过 3 秒计一次离开，累计 3 次或单次超过 15 秒，判定紧急返航。</small>
           </div>
           <div class="ctrl">
             <button class="switch" id="strictSwitch" type="button" role="switch" aria-checked="true" aria-label="严格模式"></button>
@@ -1556,6 +1556,7 @@ function startTimer() {
     taskTitle: currentTaskTitle()
   };
   save();
+  resetAway();
   beginTicking();
   startAmbient();
   playCue('start');
@@ -1608,6 +1609,7 @@ function finishTimer(completed, reason) {
     reason: reason || ''
   });
   S.active = null;
+  resetAway();
   save();
   stopTicking();
   stopAmbient(false);
@@ -1828,13 +1830,25 @@ function saveVoyageCard() {
 }
 function beginTicking() {
   stopTicking();
-  tickHandle = setInterval(tick, 1000);
   tick();
+  scheduleTick();
+}
+function scheduleTick() {
+  if (tickHandle) return;
+  if (document.hidden) return;   // 后台不排定时器，回前台重启
+  if (!S.active && !S.rest) return;
+  const a = S.active, r = S.rest;
+  const due = a && a.running ? (a.startedAt + (a.plannedSec - (a.baseSec || 0)) * 1000)
+    : r ? (r.startedAt + r.plannedSec * 1000) : 0;
+  // 按真实终点对齐下一次刷新，不靠每秒累加
+  const delay = due ? Math.min(1000, Math.max(120, due - Date.now())) : 1000;
+  tickHandle = setTimeout(function () { tickHandle = null; tick(); scheduleTick(); }, delay);
 }
 function stopTicking() {
-  if (tickHandle) { clearInterval(tickHandle); tickHandle = null; }
+  if (tickHandle) { clearTimeout(tickHandle); tickHandle = null; }
 }
 function tick() {
+  if (document.hidden) return;   // 后台只记事，不做 DOM 刷新
   const a = S.active;
   if (!a) {
     const r = S.rest;
@@ -2086,7 +2100,7 @@ function renderVoyage() {
   const note = $('#strictNote');
   note.classList.toggle('is-off', !S.settings.strict);
   note.innerHTML = S.settings.strict
-    ? '<span class="dot"></span>严格模式：航行中切出页面，判定紧急返航。'
+    ? '<span class="dot"></span>严格模式：离开 3 秒记一次，3 次或单次 15 秒判返航。'
     : '<span class="dot"></span>宽松模式：切出页面不会中断，回来可以继续计时。';
 
   $('#statToday').innerHTML = Math.round(m.todayMin) + '<em>min</em>';
@@ -2999,6 +3013,50 @@ function initStarfield() {
   });
 }
 
+/* ---------- 严格模式：离开检测 ---------- */
+var away = { on: false, since: 0, count: 0, timer: null, failed: false };
+window.__away = away;
+function strictRunning() {
+  return !!(S.settings.strict && S.active && S.active.running && !away.failed);
+}
+function resetAway() {
+  if (away.timer) { clearTimeout(away.timer); away.timer = null; }
+  away.on = false; away.since = 0; away.count = 0; away.failed = false;
+}
+function strictFail(label) {
+  if (!S.active) return;
+  away.failed = true;
+  if (away.timer) { clearTimeout(away.timer); away.timer = null; }
+  showToast('紧急返航 · ' + label);
+  finishTimer(false, '离开页面');
+  resetAway();
+}
+function awayCheck(returning) {
+  if (!strictRunning()) return;
+  const dur = Date.now() - away.since;
+  if (dur >= 15000) { strictFail('离开页面超过 15 秒'); return; }
+  if (returning && dur >= 3000) {
+    away.count += 1;
+    if (away.count >= 3) { strictFail('累计 3 次离开页面'); return; }
+    showToast('第 ' + away.count + ' 次离开 · 再离开 ' + (3 - away.count) + ' 次即判定返航');
+  }
+}
+function markAway() {
+  if (!strictRunning() || away.on) return;
+  away.on = true;
+  away.since = Date.now();
+  away.timer = setTimeout(function () {
+    away.timer = null;
+    if (away.on) awayCheck(false);
+  }, 15000);
+}
+function markBack() {
+  if (!away.on) return;
+  away.on = false;
+  if (away.timer) { clearTimeout(away.timer); away.timer = null; }
+  awayCheck(true);
+}
+
 /* ---------- 全局渲染 ---------- */
 function renderAll() {
   renderVoyage();
@@ -3088,8 +3146,16 @@ function setDuration(v) {
 
 /* ---------- 事件绑定 ---------- */
 function bindEvents() {
-  $('#startBtn').addEventListener('click', toggleStart);
-  $('#abortBtn').addEventListener('click', requestAbort);
+  const clickGuard = function (fn) {
+    let last = 0;
+    return function (ev) {
+      const now = Date.now();
+      if (now - last < 400) { if (ev && ev.preventDefault) ev.preventDefault(); return; }
+      last = now; fn(ev);
+    };
+  };
+  $('#startBtn').addEventListener('click', clickGuard(toggleStart));
+  $('#abortBtn').addEventListener('click', clickGuard(requestAbort));
   $$('#modeSeg button').forEach(function (b) {
     b.addEventListener('click', function () { setMode(b.dataset.mode); });
   });
@@ -3380,14 +3446,14 @@ function bindEvents() {
   document.addEventListener('visibilitychange', function () {
     if (document.hidden) {
       try { if (AC && AC.state === 'running' && ambientNodes) AC.suspend(); } catch (e) {}
-      if (S.active && S.active.running && S.settings.strict) {
-        finishTimer(false, '离开页面');
-      }
+      markAway();
       save();
       return;
     }
     // 回到前台：用时间戳补齐，而不是等每秒一次的定时器
     try { if (AC && AC.state === 'suspended' && ambientNodes) AC.resume(); } catch (e) {}
+    markBack();
+    if (S.active || S.rest) beginTicking();
     tick();
     renderTimer();
     if (S.active && S.active.running) { syncAmbientIndicator(); startAmbient(); }
@@ -3395,7 +3461,9 @@ function bindEvents() {
     if (sc && window.__sceneRestart) window.__sceneRestart();
   });
 
-  window.addEventListener('pagehide', function () { save(); });
+  window.addEventListener('blur', function () { markAway(); });
+  window.addEventListener('focus', function () { markBack(); });
+  window.addEventListener('pagehide', function () { markAway(); save(); });
 
   window.addEventListener('hashchange', function () { setView(currentView()); });
 
