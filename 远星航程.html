@@ -1884,6 +1884,10 @@ function renderBadges() {
 /* ---------- 设置 ---------- */
 /* ---------- 云端账号（Supabase 直连，无自建服务端） ---------- */
 const CLOUD_CFG_KEY = 'yx-cloud-config';
+const DEFAULT_CLOUD_CFG = {
+  url: 'https://zrethhlpeikhimzywimz.supabase.co',
+  key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpyZXRoaGxwZWlraGltenl3aW16Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTM5Nzc4NDcsImV4cCI6MjEwOTU1Mzg0N30.1g6b0OywWjNP9ncGk45-4SVpVIJ_FWnfrH0cORIqhxg'
+};
 const CLOUD_TABLE = 'voyages';
 const CLOUD_SDK = 'https://fastly.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js';
 let cloudCfg = null;
@@ -1893,15 +1897,23 @@ let cloudPushTimer = null;
 let cloudSyncAt = 0;
 
 function loadCloudCfg() {
-  try { cloudCfg = JSON.parse(localStorage.getItem(CLOUD_CFG_KEY) || 'null'); } catch (e) { cloudCfg = null; }
-  if (!cloudCfg || !cloudCfg.url || !cloudCfg.key) cloudCfg = null;
+  let raw = null;
+  try { raw = localStorage.getItem(CLOUD_CFG_KEY); } catch (e) { raw = null; }
+  if (raw) {
+    try {
+      const p = JSON.parse(raw);
+      if (p && p.cleared) { cloudCfg = null; return null; }
+      cloudCfg = (p && p.url && p.key) ? p : null;
+      return cloudCfg;
+    } catch (e) { cloudCfg = null; return null; }
+  }
+  cloudCfg = DEFAULT_CLOUD_CFG ? Object.assign({}, DEFAULT_CLOUD_CFG) : null;
   return cloudCfg;
 }
 function writeCloudCfg(cfg) {
   cloudCfg = cfg;
   try {
-    if (cfg) localStorage.setItem(CLOUD_CFG_KEY, JSON.stringify(cfg));
-    else localStorage.removeItem(CLOUD_CFG_KEY);
+    localStorage.setItem(CLOUD_CFG_KEY, cfg ? JSON.stringify(cfg) : JSON.stringify({ cleared: true }));
   } catch (e) { /* 忽略 */ }
 }
 function setCloudMsg(el, text, kind) {
@@ -2138,7 +2150,7 @@ function renderMeta() {
     log: '共 ' + S.sessions.length + ' 段 · 完成 ' + m.doneCount + ' 段',
     stats: '累计 ' + m.totalLy + ' 光年 · 当前 ' + SECTORS[m.sectorIdx].name,
     badges: unlocked + ' / ' + BADGES.length + ' 已解锁',
-    settings: cloudUser ? ('云端账号 ' + (cloudUser.email || '')) : '数据仅保存在这台设备的浏览器里'
+    settings: cloudUser ? ('云端账号 ' + (cloudUser.email || '')) : (cloudCfg ? '未登录云端 · 数据存在本机' : '数据仅保存在这台设备的浏览器里')
   };
   $('#viewSub').textContent = subs[view] || '';
 }
