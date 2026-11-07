@@ -4,7 +4,7 @@
 
 单文件 HTML，双击即可在浏览器打开；不登录也能离线使用。
 
-**在线体验**：<https://aka.doubaocdn.com/s/UwCoa661Zk>
+**在线体验**：<https://aka.doubaocdn.com/s/36MQ6dJ1fO>
 
 ![航行台](https://aka.doubaocdn.com/s/h7bYdMpnZV)
 
@@ -27,19 +27,26 @@
 - **统计**：日分布、时段分布与完成率图表（ECharts，离线自动降级为空态提示）。
 - **成就**：12 枚徽章——首次抵达、连续天数、单段深度、累计十小时等。
 - **设置**：航段时长、每日目标、严格模式、环境声、音量与实景开关。
-- **动效**：统一缓动令牌（expo 收柬 / 弹簧回弹），主控键有键程与掠过光带，环境声分段用滑动指示块，`prefers-reduced-motion` 下全部降级为静态终态。
+- **动效**：统一缓动令牌（expo 收束 / 弹簧回弹），主控键有键程与掠过光带，环境声分段用滑动指示块，`prefers-reduced-motion` 下全部降级为静态终态。
 - **可取消实景**：仪表右上「简洁」可收起动态画面，换成网格读数面板；选择会被记住。
 
 | 巡航中 | 移动端 |
 | --- | --- |
 | ![巡航](https://aka.doubaocdn.com/s/xcTuu24y4A) | ![移动端](https://aka.doubaocdn.com/s/66sR6PHbiV) |
 
-## 云端账号（可选）
+## 云端账号（已内置）
 
-不登录也能用，数据只存在本机浏览器。想要**邮箱密码登录 + 换设备同步**，用你自己的 Supabase 项目接管存储（本仓库不提供、不托管任何服务端）：
+应用已内置一个 Supabase 项目的 Project URL 与 anon key，**开箱即可注册登录、换设备同步**。
 
-1. 在 [supabase.com](https://supabase.com) 建一个免费项目，拿到 **Project URL** 与 **anon public key**（Project Settings → API）。
-2. 打开 SQL Editor，执行：
+- 入口：设置 → 云端账号 → 填邮箱与密码 → 「注册」（或已有账号点「登录」）。
+- 数据模型：`public.voyages(user_id uuid pk, data jsonb, updated_at timestamptz)`，行级策略限定为「只能读写自己的行」。
+- 同步策略：本地保存 3 秒内自动上传；两端都有记录时不默默覆盖，由你选「上传本地」或「从云端恢复」；计时进行中拒绝覆盖。
+- 首次注册不需要点邮箱确认链接（该项目的 Confirm email 已关闭）；如想恢复邮箱验证，可在 Authentication → Sign In / Providers 打开。
+
+### 换成自己的 Supabase 项目
+
+1. 建免费项目，拿到 Project URL 与 anon public key。
+2. 在 SQL Editor 执行：
 
 ```sql
 create table if not exists public.voyages (
@@ -47,22 +54,17 @@ create table if not exists public.voyages (
   data jsonb not null default '{}'::jsonb,
   updated_at timestamptz not null default now()
 );
-
 alter table public.voyages enable row level security;
-
 create policy voyage_read   on public.voyages for select using (auth.uid() = user_id);
 create policy voyage_insert on public.voyages for insert with check (auth.uid() = user_id);
 create policy voyage_update on public.voyages for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
 ```
 
-3. 打开应用 → 设置 → 云端账号，填入 URL 与 anon key → 连接并保存 → 注册或登录。
+3. 应用内设置 → 云端账号 → 「换个项目」，填入新 URL 与 key。
 
-说明：
+### 关于密钥暴露
 
-- 密码由 Supabase Auth 校验，应用只存登录令牌，不存明文密码；anon key 本来就是公开密钥，权限由上面的 RLS 策略限定为「只能读写自己的行」。
-- 自用可以在 Authentication → Providers → Email 里关掉 **Confirm email**，注册后免邮箱确认直接登录。
-- 登录后本地写入会在 3 秒内自动上传；两端都有数据时不会默默覆盖，让你选「上传本地」或「从云端恢复」。
-- 计时进行中不执行云端覆盖，避免把正在跑的航段弄丢。
+前端只能放 **anon public key**，它是设计成公开的，权限靠上面的 RLS 策略限定；`service_role` 密钥绝不出现在页面里，也请不要填进任何前端。
 
 ## 打开方式
 
