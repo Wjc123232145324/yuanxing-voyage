@@ -190,6 +190,21 @@ h1,h2,h3,h4{font-family:var(--font-serif);font-weight:600;letter-spacing:.01em;m
 .btn-ghost:hover{color:var(--flare);border-color:rgba(217,91,68,.35);background:rgba(217,91,68,.06)}
 
 /* 放弃航程：危险指令键，左侧斜纹警示带 */
+/* ===== 模式切换 / 休整 ===== */
+.mode-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 10px}
+.mode-seg{display:grid;grid-template-columns:1fr 1fr;width:168px;flex:none}
+.mode-note{font-size:11.5px;color:var(--dust-dim);letter-spacing:.02em;line-height:1.5;text-align:right}
+.rest-row{display:flex;align-items:center;gap:10px;margin-top:10px}
+.rest-row[hidden]{display:none}
+.rest-label{font-size:11px;letter-spacing:.14em;color:var(--dust-dim);font-family:var(--font-mono);flex:none}
+.rest-chips{display:flex;gap:6px;flex-wrap:wrap}
+.rest-chips button{font-family:var(--font-mono);font-size:12px;color:var(--dust);background:rgba(30,55,72,.30);
+  border:1px solid rgba(131,153,172,.22);border-radius:999px;padding:5px 11px;cursor:pointer;
+  transition:color .28s var(--e-soft),border-color .28s var(--e-soft),background .28s var(--e-soft),transform .18s var(--e-spring)}
+.rest-chips button:hover{color:var(--star);border-color:rgba(131,153,172,.46);transform:translateY(-1px)}
+.rest-chips button[aria-pressed="true"]{color:#FFD9A8;border-color:rgba(240,163,62,.55);background:rgba(240,163,62,.12)}
+body.is-docked .dial-state{border-color:rgba(240,163,62,.34);color:#F6C88C}
+body.is-docked .dial-state::before{opacity:1;animation:live-blink 2.6s ease-in-out infinite}
 #abortBtn{position:relative;overflow:hidden;padding-left:20px;
   border-color:rgba(217,91,68,.42);color:#E99477;background:rgba(217,91,68,.05)}
 #abortBtn::before{content:"";position:absolute;left:0;top:0;bottom:0;width:6px;
@@ -716,6 +731,26 @@ body.is-reveal .stat-row{animation:panel-in .62s .24s var(--e-out) both}
       <div class="voyage">
 
         <div class="console">
+          <div class="mode-row">
+            <div class="seg mode-seg" id="modeSeg" role="group" aria-label="模式">
+              <i class="seg-ind" aria-hidden="true"></i>
+              <button type="button" data-mode="voyage" aria-pressed="true">航程</button>
+              <button type="button" data-mode="rest" aria-pressed="false">休整</button>
+            </div>
+            <span class="mode-note" id="modeNote">专注上岸：航行即里程</span>
+          </div>
+
+          <div class="rest-row" id="restRow" hidden>
+            <span class="rest-label">休整时长</span>
+            <div class="rest-chips" id="restChips" role="group" aria-label="休整时长">
+              <button type="button" data-min="5" aria-pressed="false">5′</button>
+              <button type="button" data-min="10" aria-pressed="false">10′</button>
+              <button type="button" data-min="15" aria-pressed="true">15′</button>
+              <button type="button" data-min="20" aria-pressed="false">20′</button>
+              <button type="button" data-min="30" aria-pressed="false">30′</button>
+            </div>
+          </div>
+
           <div class="deck" id="deck">
             <canvas id="sceneCanvas" aria-hidden="true"></canvas>
             <span class="scene-tick tl" aria-hidden="true"></span>
@@ -1143,7 +1178,8 @@ const BADGES = [
 
 const DEFAULT_SETTINGS = {
   duration: 25, dailyGoal: 120, strict: true, sound: true,
-  ambient: 'none', scene: true, volume: 35, muted: false
+  ambient: 'none', scene: true, volume: 35, muted: false,
+  restDuration: 15
 };
 
 /* ---------- 工具 ---------- */
@@ -1189,7 +1225,10 @@ function defaultState() {
     missions: [],
     sessions: [],
     currentTaskId: null,
-    active: null
+    active: null,
+    mode: 'voyage',
+    rest: null,
+    rests: []
   };
 }
 function loadState() {
@@ -1203,6 +1242,9 @@ function loadState() {
     base.sessions = Array.isArray(parsed.sessions) ? parsed.sessions : [];
     base.currentTaskId = parsed.currentTaskId || null;
     base.active = parsed.active || null;
+    base.mode = parsed.mode === 'rest' ? 'rest' : 'voyage';
+    base.rest = parsed.rest || null;
+    base.rests = Array.isArray(parsed.rests) ? parsed.rests : [];
     return base;
   } catch (err) {
     return defaultState();
@@ -1288,6 +1330,59 @@ function currentTaskTitle() {
   const m = S.missions.filter(function (x) { return x.id === S.currentTaskId; })[0];
   return m ? m.title : '未指派任务';
 }
+/* ---------- 休整（娱乐模式） ---------- */
+function restElapsed() {
+  const r = S.rest;
+  if (!r) return 0;
+  return Math.min(r.plannedSec, Math.round((Date.now() - r.startedAt) / 1000));
+}
+function todayRestMin() {
+  const k = todayKey();
+  const sec = S.rests.filter(function (x) { return dayKey(x.end) === k; })
+    .reduce(function (a, x) { return a + (x.restSec || 0); }, 0);
+  return Math.round(sec / 60);
+}
+function setMode(mode) {
+  if (mode !== 'rest' && S.rest) { showToast('休整进行中，先结束休整再出航。'); return; }
+  if (mode === 'rest' && S.active && S.active.running) { showToast('航程进行中，先暂停或返航再休整。'); return; }
+  if (mode === 'rest' && S.active) { finishTimer(false, '转入休整'); }
+  S.mode = mode === 'rest' ? 'rest' : 'voyage';
+  save();
+  renderVoyage();
+  renderTimer();
+}
+function startRest() {
+  if (S.rest) return;
+  const planned = clamp(Math.round(S.settings.restDuration || 15), 1, 90) * 60;
+  S.rest = { plannedSec: planned, startedAt: Date.now(), running: true };
+  save();
+  beginTicking();
+  startAmbient();
+  playCue('start');
+  renderVoyage();
+  renderTimer();
+  showToast('已靠港 · 休整 ' + Math.round(planned / 60) + ' 分钟，结束会提醒你返航');
+}
+function finishRest(completed, reason) {
+  const r = S.rest;
+  if (!r) return;
+  const sec = Math.max(0, Math.min(r.plannedSec, Math.round((Date.now() - r.startedAt) / 1000)));
+  S.rests.push({
+    id: uid(), plannedSec: r.plannedSec, restSec: sec,
+    start: r.startedAt, end: Date.now(), completed: !!completed, reason: reason || ''
+  });
+  if (S.rests.length > 400) S.rests = S.rests.slice(-400);
+  S.rest = null;
+  save();
+  stopTicking();
+  stopAmbient(false);
+  renderAll();
+  playCue(completed ? 'arrive' : 'abort');
+  showToast(completed
+    ? '休整结束 · ' + Math.round(sec / 60) + ' 分钟，回到航线吧'
+    : '已提前结束 · 休整 ' + fmtClock(sec) + ' 已记入日志');
+}
+
 function startTimer() {
   const planned = S.settings.duration * 60;
   S.active = {
@@ -1378,7 +1473,13 @@ function stopTicking() {
 }
 function tick() {
   const a = S.active;
-  if (!a) { stopTicking(); return; }
+  if (!a) {
+    const r = S.rest;
+    if (!r) { stopTicking(); return; }
+    if ((Date.now() - r.startedAt) / 1000 >= r.plannedSec) { finishRest(true, ''); return; }
+    renderTimer();
+    return;
+  }
   if (a.running) {
     const el = activeElapsed();
     if (el >= a.plannedSec) { finishTimer(true, ''); return; }
@@ -1405,6 +1506,27 @@ function setArc(el, ratio, len) {
 
 let lastStateLabel = '';
 function renderTimer() {
+  const rest = S.rest;
+  if (rest) {
+    const planned = rest.plannedSec;
+    const el = restElapsed();
+    const remain = Math.max(0, planned - el);
+    $('#dialTime').textContent = fmtClock(remain);
+    $('#dialTime').classList.toggle('is-low', remain <= 60);
+    document.body.classList.remove('is-cruising');
+    document.body.classList.add('is-docked');
+    if (lastStateLabel !== 'DOCKED') { $('#dialState').textContent = 'DOCKED'; lastStateLabel = 'DOCKED'; }
+    const bar = $('#progressBar');
+    if (bar) bar.style.width = ((el / planned) * 100).toFixed(2) + '%';
+    const ly = $('#deckLy');
+    if (ly) ly.textContent = '今日休整 ' + todayRestMin() + ' 分钟';
+    const plan = $('#dialPlan');
+    if (plan) plan.textContent = '计划休整 ' + Math.round(planned / 60) + ' 分钟';
+    const elRead = $('#elRead');
+    if (elRead) elRead.textContent = fmtClock(el);
+    return;
+  }
+  document.body.classList.remove('is-docked');
   const a = S.active;
   const planned = a ? a.plannedSec : S.settings.duration * 60;
   const elapsed = a ? activeElapsed() : 0;
@@ -1521,14 +1643,32 @@ function renderVoyage() {
   }
   $('#scopeLabel').textContent = '舷窗 ' + pad2(sector.n);
 
-  const planned = S.active ? S.active.plannedSec : S.settings.duration * 60;
+  const isRest = S.mode === 'rest';
+  const planned = isRest
+    ? (S.rest ? S.rest.plannedSec : clamp(Math.round(S.settings.restDuration || 15), 1, 90) * 60)
+    : (S.active ? S.active.plannedSec : S.settings.duration * 60);
   $('#planRead').textContent = fmtClock(planned);
-  $('#lyRead').textContent = '+' + Math.round(planned / 60) + ' ly';
-  $('#dialPlan').textContent = '计划航段 ' + Math.round(planned / 60) + ' 分钟';
+  $('#lyRead').textContent = isRest ? '—' : '+' + Math.round(planned / 60) + ' ly';
+  $('#dialPlan').textContent = (isRest ? '计划休整 ' : '计划航段 ') + Math.round(planned / 60) + ' 分钟';
+
+  $('#modeNote').textContent = isRest
+    ? '休整模式：靠港放松，结束提醒返航'
+    : '专注模式：航行一段，专注即里程';
+  $('#restRow').hidden = !isRest;
+  const seg = $('#modeSeg');
+  if (seg) {
+    seg.querySelectorAll('button').forEach(function (b) {
+      b.setAttribute('aria-pressed', b.dataset.mode === S.mode ? 'true' : 'false');
+    });
+    syncModeIndicator();
+  }
+  $$('#restChips button').forEach(function (b) {
+    b.setAttribute('aria-pressed', Number(b.dataset.min) === Number(S.settings.restDuration || 15) ? 'true' : 'false');
+  });
 
   const dbar = $('#dailyBar');
   if (dbar) dbar.style.width = (clamp(m.todayMin / S.settings.dailyGoal, 0, 1) * 100).toFixed(1) + '%';
-  $('#dailyRead').textContent = '今日 ' + Math.round(m.todayMin) + ' / ' + S.settings.dailyGoal + ' 分钟';
+  $('#dailyRead').textContent = '今日专注 ' + Math.round(m.todayMin) + ' / ' + S.settings.dailyGoal + ' 分钟 · 休整 ' + todayRestMin() + ' 分钟';
 
   renderTaskSelect();
 
@@ -1536,6 +1676,27 @@ function renderVoyage() {
   const btn = $('#startBtn');
   const label = $('#startLabel');
   const abort = $('#abortBtn');
+  if (isRest) {
+    if (S.rest) {
+      label.textContent = '结束休整';
+      btn.classList.remove('btn-primary');
+      btn.classList.remove('is-running');
+      abort.hidden = true;
+    } else {
+      label.textContent = '启动休整';
+      btn.classList.add('btn-primary');
+      btn.classList.remove('is-running');
+      abort.hidden = true;
+    }
+    $$('#ambientSeg button').forEach(function (b) {
+      b.setAttribute('aria-pressed', S.settings.ambient === b.dataset.amb ? 'true' : 'false');
+    });
+    syncAmbientIndicator();
+    renderStarmap();
+    renderTimer();
+    renderMeta();
+    return;
+  }
   btn.classList.toggle('is-running', !!a && a.running);
   if (!a) {
     label.textContent = '启动航程';
@@ -2199,6 +2360,17 @@ function closeModal() {
   modalCallback = null;
 }
 function requestAbort() {
+  if (S.rest) {
+    const el = restElapsed();
+    openModal({
+      title: '提前结束休整？',
+      body: '已休整 ' + fmtClock(el) + '，剩下的时间会作废。这一段会记进休整日志。',
+      confirmText: '结束休整',
+      cancelText: '继续休息',
+      onConfirm: function () { finishRest(false, '提前返航'); }
+    });
+    return;
+  }
   if (!S.active) return;
   const el = Math.round(activeElapsed());
   openModal({
@@ -2442,9 +2614,24 @@ function renderAll() {
 
 /* ---------- 交互动作 ---------- */
 function toggleStart() {
+  if (S.mode === 'rest') {
+    if (S.rest) finishRest(false, '提前返航');
+    else startRest();
+    return;
+  }
   if (!S.active) startTimer();
   else if (S.active.running) pauseTimer();
   else resumeTimer();
+}
+
+function syncModeIndicator() {
+  const seg = $('#modeSeg');
+  if (!seg) return;
+  const ind = seg.querySelector('.seg-ind');
+  const on = seg.querySelector('button[aria-pressed="true"]');
+  if (!ind || !on) return;
+  ind.style.width = on.offsetWidth + 'px';
+  ind.style.transform = 'translateX(' + (on.offsetLeft - seg.clientLeft) + 'px)';
 }
 
 function syncAmbientIndicator() {
@@ -2506,6 +2693,19 @@ function setDuration(v) {
 function bindEvents() {
   $('#startBtn').addEventListener('click', toggleStart);
   $('#abortBtn').addEventListener('click', requestAbort);
+  $$('#modeSeg button').forEach(function (b) {
+    b.addEventListener('click', function () { setMode(b.dataset.mode); });
+  });
+  $$('#restChips button').forEach(function (b) {
+    b.addEventListener('click', function () {
+      if (S.rest) { showToast('休整进行中，结束后再改时长。'); return; }
+      S.settings.restDuration = clamp(Number(b.dataset.min) || 15, 1, 90);
+      save();
+      renderVoyage();
+      renderTimer();
+    });
+  });
+  window.addEventListener('resize', syncModeIndicator);
   $('#deckToggle').addEventListener('click', function () {
     S.settings.scene = S.settings.scene === false;
     save();
@@ -2821,7 +3021,7 @@ function initScene() {
   const ship = { x: 0, y: 0, len: 0 };
   const warp = [], dust = [];
   let ember = [];
-  let spd = 1, approach = 0;
+  let spd = 1, approach = 0, dockK = 0;
 
   function build() {
     W = cv.clientWidth || 600;
@@ -2982,7 +3182,8 @@ function initScene() {
     t += dt;
 
     // 加速 / 减速：速度平滑过渡，避免开计时瞬间硬切
-    const targetSpd = cruise ? 5.2 : 1;
+    const docked = !reduce && document.body.classList.contains('is-docked');
+    const targetSpd = cruise ? 5.2 : (docked ? 0.52 : 1);
     spd += (targetSpd - spd) * Math.min(1, dt * (cruise ? 1.35 : 2.6));
     approach += ((cruise ? 1 : 0) - approach) * Math.min(1, dt * 1.1);
 
@@ -3048,6 +3249,48 @@ function initScene() {
       ctx.fillStyle = 'rgba(150,178,198,' + (d.a * Math.min(1, 0.5 + spd * 0.2)).toFixed(3) + ')';
       ctx.fill();
     });
+
+    // 靠港：远处的环形空间站与航标灯
+    dockK += ((docked ? 1 : 0) - dockK) * Math.min(1, dt * 1.15);
+    if (dockK > 0.02) {
+      const sx = W * 0.90, sy = H * 0.34, sr = Math.max(26, H * 0.20);
+      ctx.save();
+      ctx.globalAlpha = dockK;
+      ctx.translate(sx, sy);
+      ctx.rotate(-0.22);
+      // 主环
+      ctx.beginPath(); ctx.ellipse(0, 0, sr, sr * 0.42, 0, 0, 6.2832);
+      ctx.strokeStyle = 'rgba(168,192,210,.34)'; ctx.lineWidth = 2.2; ctx.stroke();
+      ctx.beginPath(); ctx.ellipse(0, 0, sr * 0.72, sr * 0.30, 0, 0, 6.2832);
+      ctx.strokeStyle = 'rgba(120,148,170,.22)'; ctx.lineWidth = 1; ctx.stroke();
+      // 桁架与舱段
+      ctx.beginPath();
+      ctx.moveTo(-sr, 0); ctx.lineTo(sr, 0);
+      ctx.strokeStyle = 'rgba(131,153,172,.30)'; ctx.lineWidth = 1.4; ctx.stroke();
+      ctx.fillStyle = 'rgba(17,35,49,.92)';
+      ctx.fillRect(-sr * 0.16, -sr * 0.13, sr * 0.32, sr * 0.26);
+      ctx.strokeStyle = 'rgba(240,163,62,.28)'; ctx.lineWidth = 1; ctx.strokeRect(-sr * 0.16, -sr * 0.13, sr * 0.32, sr * 0.26);
+      // 靠泊臂（指向飞船）
+      ctx.beginPath();
+      ctx.moveTo(-sr * 0.9, -sr * 0.02); ctx.lineTo(-sr * 1.5, -sr * 0.02);
+      ctx.strokeStyle = 'rgba(131,153,172,.26)'; ctx.lineWidth = 1.2; ctx.stroke();
+      // 航标灯
+      for (let i = 0; i < 5; i++) {
+        const a2 = t * 0.9 + i * 0.72;
+        const lx = Math.cos(a2) * sr, ly = Math.sin(a2) * sr * 0.42;
+        const bl = 0.35 + 0.65 * Math.abs(Math.sin(t * 1.6 + i));
+        ctx.beginPath(); ctx.arc(lx, ly, 1.5, 0, 6.2832);
+        ctx.fillStyle = i % 2 ? 'rgba(255,214,150,' + (0.55 * bl).toFixed(2) + ')' : 'rgba(168,208,235,' + (0.5 * bl).toFixed(2) + ')';
+        ctx.fill();
+      }
+      // 站体轮廓光
+      const sg = ctx.createRadialGradient(0, 0, sr * 0.2, 0, 0, sr * 1.15);
+      sg.addColorStop(0, 'rgba(240,163,62,.07)');
+      sg.addColorStop(1, 'rgba(240,163,62,0)');
+      ctx.fillStyle = sg;
+      ctx.beginPath(); ctx.arc(0, 0, sr * 1.15, 0, 6.2832); ctx.fill();
+      ctx.restore();
+    }
 
     layers.forEach(function (L) {
       const sp = L.speed * spd;
