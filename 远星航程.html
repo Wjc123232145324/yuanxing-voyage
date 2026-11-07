@@ -739,6 +739,9 @@ input:focus,select:focus,.cloud-input:focus{box-shadow:inset 0 0 0 1px rgba(240,
 .card-preview img{display:block;width:100%;border-radius:14px}
 .card-acts{display:flex;gap:8px;margin-top:12px}
 .card-acts .btn{flex:1;min-height:44px;padding:0 10px;font-size:13px}
+
+/* 数据组按钮不折行 */
+.btn-line,.btn-danger{white-space:nowrap;flex:0 0 auto;}
 </style>
 </head>
 <body>
@@ -1185,6 +1188,14 @@ input:focus,select:focus,.cloud-input:focus{box-shadow:inset 0 0 0 1px rgba(240,
             <small>下载一份 JSON，包含全部航段、任务与设置。</small>
           </div>
           <button class="btn-line" id="exportBtn" type="button">导出</button>
+        </div>
+        <div class="set-row">
+          <div class="label">
+            <b>导入航程记录</b>
+            <small>读取之前导出的 JSON，覆盖本机数据；导入前会自动备份当前存档。</small>
+          </div>
+          <button class="btn-line" id="importBtn" type="button">导入</button>
+          <input type="file" id="importFile" accept="application/json,.json" hidden>
         </div>
         <div class="set-row">
           <div class="label">
@@ -3367,8 +3378,9 @@ function bindEvents() {
   $('#exportBtn').addEventListener('click', function () {
     try {
       const payload = {
-        app: '远星航程', exportedAt: new Date().toISOString(),
-        settings: S.settings, missions: S.missions, sessions: S.sessions
+        app: '远星航程', v: DATA_VERSION, exportedAt: new Date().toISOString(),
+        settings: S.settings, missions: S.missions, sessions: S.sessions,
+        currentTaskId: S.currentTaskId, mode: S.mode, rests: S.rests
       };
       const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
@@ -3383,6 +3395,68 @@ function bindEvents() {
     } catch (err) {
       showToast('导出失败，可以稍后再试。');
     }
+  });
+
+  /* ---------- 导入：读取 JSON → 校验 → 预览 → 覆盖 ---------- */
+  function importPreview(data) {
+    let migrated;
+    try { migrated = migrateState(data); } catch (err) { return null; }
+    const list = migrated.sessions.slice().sort(function (a, b) { return a.start - b.start; });
+    const from = list.length ? dayKey(list[0].start) : '—';
+    const to = list.length ? dayKey(list[list.length - 1].end) : '—';
+    return { migrated: migrated, sessions: list.length, missions: migrated.missions.length, rests: migrated.rests.length, from: from, to: to };
+  }
+  function applyImport(migrated) {
+    try {
+      localStorage.setItem(STORE_KEY + '-preimport-' + Date.now(), JSON.stringify(S));
+    } catch (err) {}
+    S = migrated;
+    S.active = null;
+    S.rest = null;
+    if (S.mode === 'rest') S.mode = 'voyage';
+    stopTicking();
+    save();
+    renderAll();
+    renderMute();
+    setView('voyage');
+    showToast('已导入 · ' + S.sessions.length + ' 条航段、' + S.missions.length + ' 个任务。导入前的存档已备份。');
+  }
+  function handleImportText(text) {
+    if (!text || text.length > 8 * 1024 * 1024) { showToast('文件太大或为空，未导入。'); return; }
+    let data = null;
+    try { data = JSON.parse(text); } catch (err) { showToast('这个文件不是有效的 JSON，未导入。'); return; }
+    if (!data || typeof data !== 'object' || !Array.isArray(data.sessions)) {
+      showToast('文件里没有航段数据，可能不是远星航程的导出文件。');
+      return;
+    }
+    if (S.active || S.rest) { showToast('正在计时或休整，先结束再导入。'); return; }
+    const info = importPreview(data);
+    if (!info) { showToast('文件内容无法识别，未导入。'); return; }
+    openModal({
+      title: '导入这份记录？',
+      body: '文件：' + info.sessions + ' 条航段（' + info.from + ' 至 ' + info.to + '）、' +
+        info.missions + ' 个任务' + (info.rests ? '、' + info.rests + ' 条休整' : '') + '。' +
+        '导入会覆盖本机现有的 ' + S.sessions.length + ' 条航段、' + S.missions.length + ' 个任务；导入前会自动备份当前存档。',
+      confirmText: '导入并覆盖',
+      cancelText: '先不导入',
+      onConfirm: function () { applyImport(info.migrated); }
+    });
+  }
+  $('#importBtn').addEventListener('click', function () {
+    const input = $('#importFile');
+    input.value = '';
+    input.click();
+  });
+  $('#importFile').addEventListener('change', function (ev) {
+    const file = ev.target.files && ev.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function () {
+      try { handleImportText(String(reader.result || '')); }
+      catch (err) { showToast('读取失败，未导入。'); }
+    };
+    reader.onerror = function () { showToast('读取失败，未导入。'); };
+    reader.readAsText(file);
   });
 
   $('#wipeBtn').addEventListener('click', function () {
