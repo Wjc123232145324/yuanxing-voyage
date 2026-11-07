@@ -4,7 +4,7 @@
 
 单文件 HTML，双击即可在浏览器打开；不登录也能离线使用。
 
-**在线体验**：<https://aka.doubaocdn.com/s/v47SypmJzb>
+**在线体验**：<https://wjc123232145324.github.io/yuanxing-voyage/>（GitHub Pages 托管，永久地址；每次提交后自动更新）
 
 ![航行台](https://aka.doubaocdn.com/s/h7bYdMpnZV)
 
@@ -93,6 +93,7 @@ xdg-open 远星航程.html    # Linux
 | 文件 | 说明 |
 | --- | --- |
 | `远星航程.html` | 应用本体，单文件（约 360 KB，含内联美术素材） |
+| `index.html` | 首页跳转，GitHub Pages 入口 |
 | `LICENSE` | MIT |
 
 ## License
