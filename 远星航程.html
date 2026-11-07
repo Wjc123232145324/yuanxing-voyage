@@ -367,6 +367,10 @@ body.is-docked .dial-state::before{opacity:1;animation:live-blink 2.6s ease-in-o
 .log-row{display:grid;grid-template-columns:56px minmax(0,1fr) auto;gap:6px 12px;align-items:start;
   padding:11px 0;border-bottom:1px dashed rgba(30,55,72,.55)}
 .log-row:last-child{border-bottom:0}
+.log-row[data-card]{cursor:pointer;border-radius:12px;padding-left:8px;padding-right:8px;margin:0 -8px;
+  transition:background .24s var(--e-soft)}
+.log-row[data-card]:hover{background:rgba(240,163,62,.06)}
+.log-row[data-card] .log-state::after{content:" ›";color:var(--beacon)}
 @media (max-width:699px){.log-task .sub{display:none}}
 .sub-mobile{display:block;margin-top:3px;font-size:10.5px;color:var(--beacon);
   font-family:var(--font-mono);letter-spacing:.04em}
@@ -649,6 +653,92 @@ body.is-reveal .brief{animation:panel-in .62s .08s var(--e-out) both}
 body.is-reveal .starmap-panel{animation:panel-in .62s .16s var(--e-out) both}
 body.is-reveal .stat-row{animation:panel-in .62s .24s var(--e-out) both}
 
+
+/* ===== 柔化一切硬边框：圆角 + 内光 + 无框 ===== */
+:root{
+  --r-card:16px; --r-in:10px;
+  --card-bg:linear-gradient(180deg,rgba(18,37,52,.72),rgba(8,18,27,.92));
+  --card-shadow:inset 0 1px 0 rgba(255,255,255,.05), 0 22px 44px -34px rgba(0,0,0,.92);
+}
+.console,.brief,.panel,.starmap-panel,.chart-card,.set-group,.stats-grid,.badge,.dialog,
+.mission-item,.log-item,.cloud-card{
+  border:0 !important;border-radius:var(--r-card);
+  background:var(--card-bg) !important;
+  box-shadow:var(--card-shadow);
+}
+.console{padding:20px 16px 18px}
+.console::before{opacity:.55}
+.console::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+  background:radial-gradient(120% 90% at 12% -10%,rgba(240,163,62,.10),transparent 58%)}
+.deck{border:0 !important;border-radius:14px;overflow:hidden;min-height:212px;flex:1 0 212px;
+  box-shadow:inset 0 0 0 1px rgba(131,153,172,.10), inset 0 0 44px rgba(3,7,11,.62)}
+.scene-hair{inset:9px;border:1px solid rgba(233,241,247,.06);border-radius:11px}
+.scene-tick{opacity:.55}
+.scope{background:var(--card-bg) !important;border:0 !important;border-radius:14px;box-shadow:var(--card-shadow)}
+.scope-hair{inset:8px;border-radius:10px;border-color:rgba(233,241,247,.07)}
+.stats-grid{gap:12px !important;background:none !important}
+.stat{background:rgba(13,26,36,.55);border-radius:12px;padding:16px 14px}
+.chart-card,.panel,.set-group{margin-top:18px}
+.btn{min-height:46px;padding:0 22px;border-radius:999px;border:0;
+  background:rgba(30,55,72,.35);box-shadow:inset 0 1px 0 rgba(255,255,255,.06)}
+.btn-primary{border-radius:999px;color:#1A1105;
+  background:linear-gradient(180deg,#FFD9A6 0%,#F7B75F 42%,#E9A03C 76%,#D8892A 100%);
+  box-shadow:0 12px 26px -16px rgba(240,163,62,.95), inset 0 1px 0 rgba(255,255,255,.4)}
+.btn-ghost,.btn-line,.btn-danger,.preset,.chip{min-height:38px;padding:0 15px;border-radius:999px}
+.btn-line,.btn-danger,.preset,.chip{border:0 !important;background:rgba(30,55,72,.28) !important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.05)}
+.icon-btn{border:0;border-radius:12px;background:rgba(17,35,49,.5);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.05)}
+.icon-btn:hover{background:rgba(30,55,72,.55)}
+.deck-toggle{border:0;border-radius:999px;background:rgba(5,10,17,.42);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.05)}
+.seg{border:0;border-radius:999px;background:rgba(10,20,28,.6);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.04);overflow:hidden}
+.seg-ind{border-radius:999px;box-shadow:inset 0 0 0 1px rgba(240,163,62,.18)}
+input,select,.cloud-input{border:0 !important;border-radius:11px;
+  background:rgba(11,24,34,.72) !important;box-shadow:inset 0 0 0 1px rgba(131,153,172,.12)}
+input:focus,select:focus,.cloud-input:focus{box-shadow:inset 0 0 0 1px rgba(240,163,62,.45),0 0 0 4px rgba(240,163,62,.08)}
+.check i{border:0 !important;border-radius:7px;background:rgba(11,24,34,.7);box-shadow:inset 0 0 0 1px rgba(131,153,172,.18)}
+.switch{border:0;border-radius:999px;background:rgba(11,24,34,.7);box-shadow:inset 0 1px 3px rgba(0,0,0,.4)}
+.topbar{border-bottom:0 !important;box-shadow:0 1px 0 rgba(131,153,172,.08)}
+.rail{border-top:0 !important;box-shadow:0 -1px 0 rgba(131,153,172,.08);background:rgba(8,17,24,.9)}
+.dial-state,.toast,.tag,th{border-radius:999px}
+.badge:hover,.mission-item:hover,.log-item:hover{transform:translateY(-2px);
+  box-shadow:var(--card-shadow),0 12px 26px -20px rgba(0,0,0,.9)}
+.badge,.mission-item,.log-item{transition:transform .3s var(--e-out),box-shadow .3s var(--e-out),background .3s var(--e-soft)}
+
+
+/* ===== 收尾：提示条、读数格、呼吸光 ===== */
+.toast{border:0;border-radius:14px;background:linear-gradient(180deg,rgba(24,44,58,.96),rgba(12,24,33,.96));
+  padding:12px 18px;box-shadow:0 18px 38px -24px rgba(0,0,0,.95), inset 2px 0 0 rgba(240,163,62,.55)}
+@media (max-width:899px){.toast{bottom:96px}}
+.readout{border:0 !important;border-radius:12px;background:rgba(13,26,36,.55);padding:14px 14px 12px}
+.readout + .readout{margin-left:0}
+.trip,.readouts,.tri{background:none !important;border:0 !important;gap:10px !important}
+.log-item,.mission-item,.badge{border:0 !important;border-radius:14px;background:rgba(13,26,36,.55) !important}
+.log-item{border-bottom:0 !important}
+.set-group .row,.settings-row{border-bottom:0 !important}
+@keyframes halo-breathe{0%,100%{opacity:.5}50%{opacity:.92}}
+@keyframes btn-glow{0%,100%{filter:drop-shadow(0 8px 16px rgba(240,163,62,.18))}
+  50%{filter:drop-shadow(0 10px 22px rgba(240,163,62,.38))}}
+.console::after{animation:halo-breathe 7.4s ease-in-out infinite}
+.btn-primary{animation:btn-glow 4.8s ease-in-out infinite}
+.view-title::after{content:"";display:block;width:52px;height:1px;margin-top:10px;
+  background:linear-gradient(90deg,rgba(240,163,62,.7),rgba(240,163,62,0));
+  animation:title-line 5.4s ease-in-out infinite}
+@keyframes title-line{0%,100%{opacity:.55;width:52px}50%{opacity:1;width:78px}}
+@media (prefers-reduced-motion: reduce){
+  .console::after,.btn-primary,.view-title::after{animation:none !important}
+}
+
+#cardModal{z-index:60;background:rgba(3,7,11,.9)}
+.card-sheet{width:min(100%,430px);max-height:94vh;overflow:auto;padding:12px;border-radius:20px;
+  background:linear-gradient(180deg,rgba(16,32,45,.97),rgba(6,13,19,.98));
+  box-shadow:0 34px 70px -30px #000, inset 0 1px 0 rgba(255,255,255,.06)}
+.card-preview{position:relative}
+.card-preview img{display:block;width:100%;border-radius:14px}
+.card-acts{display:flex;gap:8px;margin-top:12px}
+.card-acts .btn{flex:1;min-height:44px;padding:0 10px;font-size:13px}
 </style>
 </head>
 <body>
@@ -1123,6 +1213,16 @@ body.is-reveal .stat-row{animation:panel-in .62s .24s var(--e-out) both}
     </div>
   </div>
 </div>
+<div class="modal" id="cardModal" role="dialog" aria-modal="true" aria-label="航程卡">
+  <div class="card-sheet">
+    <div class="card-preview"><img id="cardImg" alt="本次航程卡"></div>
+    <div class="card-acts">
+      <button class="btn btn-primary" id="cardSave" type="button">保存图片</button>
+      <button class="btn-line" id="cardShare" type="button">分享</button>
+      <button class="btn-line" id="cardClose" type="button">关闭</button>
+    </div>
+  </div>
+</div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script src="https://fastly.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js" defer></script>
@@ -1218,9 +1318,10 @@ function escapeHTML(str) {
 function clamp(n, a, b) { return Math.min(b, Math.max(a, n)); }
 
 /* ---------- 状态 ---------- */
+const DATA_VERSION = 3;
 function defaultState() {
   return {
-    v: 1,
+    v: DATA_VERSION,
     settings: Object.assign({}, DEFAULT_SETTINGS),
     missions: [],
     sessions: [],
@@ -1231,22 +1332,80 @@ function defaultState() {
     rests: []
   };
 }
+function migrateState(parsed) {
+  const from = Number(parsed.v) || 1;
+  const base = defaultState();
+
+  base.settings = Object.assign({}, DEFAULT_SETTINGS, parsed.settings || {});
+  if (!['none', 'space', 'engine'].includes(base.settings.ambient)) base.settings.ambient = 'none';
+  base.settings.duration = clamp(Number(base.settings.duration) || 25, 5, 90);
+  base.settings.dailyGoal = clamp(Number(base.settings.dailyGoal) || 120, 30, 720);
+  base.settings.restDuration = clamp(Number(base.settings.restDuration) || 15, 5, 45);
+
+  base.currentTaskId = parsed.currentTaskId || null;
+  base.mode = parsed.mode === 'rest' ? 'rest' : 'voyage';
+  base.rest = parsed.rest && typeof parsed.rest === 'object' ? parsed.rest : null;
+  base.active = parsed.active && typeof parsed.active === 'object' ? parsed.active : null;
+  if (base.active && (!(Number(base.active.plannedSec) >= 60) || !base.active.running)) {
+    // 计时状态不跨会话恢复，避免把休眠时间算成专注
+    base.active = null;
+  }
+
+  const cleanSec = function (n) { const v = Number(n); return Number.isFinite(v) && v > 0 ? v : 0; };
+  base.sessions = (Array.isArray(parsed.sessions) ? parsed.sessions : []).filter(function (s) {
+    return s && typeof s === 'object' && Number.isFinite(Number(s.end));
+  }).map(function (s, i) {
+    return {
+      id: s.id || 'legacy-' + i,
+      taskId: s.taskId || null,
+      taskTitle: typeof s.taskTitle === 'string' && s.taskTitle.trim() ? s.taskTitle : '未指派任务',
+      plannedSec: cleanSec(s.plannedSec),
+      focusSec: cleanSec(s.focusSec),
+      start: Number(s.start) || Number(s.end) || Date.now(),
+      end: Number(s.end) || Date.now(),
+      completed: !!s.completed,
+      reason: typeof s.reason === 'string' ? s.reason : ''
+    };
+  });
+  base.rests = (Array.isArray(parsed.rests) ? parsed.rests : []).filter(function (r) {
+    return r && typeof r === 'object' && Number.isFinite(Number(r.end));
+  }).map(function (r, i) {
+    return {
+      id: r.id || 'legacy-rest-' + i,
+      plannedSec: cleanSec(r.plannedSec),
+      restSec: cleanSec(r.restSec),
+      start: Number(r.start) || Number(r.end) || Date.now(),
+      end: Number(r.end) || Date.now(),
+      completed: !!r.completed,
+      reason: typeof r.reason === 'string' ? r.reason : ''
+    };
+  });
+  base.missions = (Array.isArray(parsed.missions) ? parsed.missions : []).filter(function (m) {
+    return m && typeof m === 'object' && typeof m.title === 'string' && m.title.trim();
+  }).map(function (m, i) {
+    return { id: m.id || 'legacy-m-' + i, title: m.title.trim().slice(0, 40), est: Math.max(1, Number(m.est) || 1), done: !!m.done };
+  });
+
+  if (base.currentTaskId && !base.missions.some(function (m) { return m.id === base.currentTaskId; })) {
+    base.currentTaskId = null;
+  }
+  base.v = DATA_VERSION;
+  base.migratedFrom = from < DATA_VERSION ? from : null;
+  return base;
+}
 function loadState() {
-  try {
-    const raw = localStorage.getItem(STORE_KEY);
-    if (!raw) return defaultState();
-    const parsed = JSON.parse(raw);
-    const base = defaultState();
-    base.settings = Object.assign({}, DEFAULT_SETTINGS, parsed.settings || {});
-    base.missions = Array.isArray(parsed.missions) ? parsed.missions : [];
-    base.sessions = Array.isArray(parsed.sessions) ? parsed.sessions : [];
-    base.currentTaskId = parsed.currentTaskId || null;
-    base.active = parsed.active || null;
-    base.mode = parsed.mode === 'rest' ? 'rest' : 'voyage';
-    base.rest = parsed.rest || null;
-    base.rests = Array.isArray(parsed.rests) ? parsed.rests : [];
-    return base;
-  } catch (err) {
+  let raw = null;
+  try { raw = localStorage.getItem(STORE_KEY); } catch (err) { return defaultState(); }
+  if (!raw) return defaultState();
+  let parsed = null;
+  try { parsed = JSON.parse(raw); } catch (err) {
+    // 坏数据留档，别直接抹掉
+    try { localStorage.setItem(STORE_KEY + '-broken-' + Date.now(), raw); } catch (e2) {}
+    return defaultState();
+  }
+  if (!parsed || typeof parsed !== 'object') return defaultState();
+  try { return migrateState(parsed); } catch (err) {
+    try { localStorage.setItem(STORE_KEY + '-broken-' + Date.now(), raw); } catch (e2) {}
     return defaultState();
   }
 }
@@ -1435,6 +1594,8 @@ function finishTimer(completed, reason) {
   const beforeIdx = computeMetrics().sectorIdx;
   const rawElapsed = activeElapsed();
   const focusSec = Math.round(clamp(rawElapsed, 0, a.plannedSec));
+  const naturalEnd = (a.startedAt || a.startAt || Date.now()) + Math.max(0, (a.plannedSec - (a.baseSec || 0)) * 1000);
+  const lateBy = completed ? Date.now() - naturalEnd : 0;
   S.sessions.push({
     id: uid(),
     taskId: a.taskId || null,
@@ -1442,7 +1603,7 @@ function finishTimer(completed, reason) {
     plannedSec: a.plannedSec,
     focusSec: focusSec,
     start: a.startAt || Date.now(),
-    end: Date.now(),
+    end: (completed && lateBy > 60000) ? naturalEnd : Date.now(),
     completed: !!completed,
     reason: reason || ''
   });
@@ -1455,13 +1616,215 @@ function finishTimer(completed, reason) {
   if (completed) {
     playCue('arrive');
     const sector = SECTORS[m.sectorIdx];
-    showToast(m.sectorIdx > beforeIdx
-      ? '进入新星区 ' + pad2(sector.n) + ' · ' + sector.name + '，累计 ' + m.totalLy + ' 光年'
-      : '抵达 · 本段 +' + Math.round(focusSec / 60) + ' ly，累计 ' + m.totalLy + ' 光年 · ' + sector.name);
+    setTimeout(function () {
+      try {
+        showVoyageCard(S.sessions[S.sessions.length - 1], computeMetrics(), m.sectorIdx > beforeIdx);
+      } catch (err) {
+        showToast('抵达 · 本段 +' + Math.round(focusSec / 60) + ' ly · ' + sector.name);
+      }
+    }, 560);
   } else {
     playCue('abort');
     showToast((reason ? reason : '紧急返航') + ' · 本段不计里程，专注 ' + fmtClock(focusSec) + ' 已记入日志');
   }
+}
+/* ---------- 航程卡：抵达后生成一张可保存的海报 ---------- */
+var lastCard = null;
+function roundRectPath(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y); ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r); ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h); ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r); ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+function clipText(ctx, text, maxW) {
+  if (ctx.measureText(text).width <= maxW) return text;
+  while (text.length > 1 && ctx.measureText(text + '…').width > maxW) text = text.slice(0, -1);
+  return text + '…';
+}
+function buildVoyageCard(session, metrics, newSector) {
+  const W = 1080, H = 1440;
+  const cvs = document.createElement('canvas');
+  cvs.width = W; cvs.height = H;
+  const ctx = cvs.getContext('2d');
+  const mono = 'ui-monospace, SFMono-Regular, "DejaVu Sans Mono", Menlo, monospace';
+  const serif = '"Songti SC", "Noto Serif CJK SC", "Source Han Serif SC", serif';
+  const sans = '"PingFang SC", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif';
+
+  // 底色
+  const bg = ctx.createLinearGradient(0, 0, 0, H);
+  bg.addColorStop(0, '#08131C');
+  bg.addColorStop(.55, '#050B12');
+  bg.addColorStop(1, '#04090E');
+  ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+
+  // 星区实景
+  const idx = Math.min(SECTORS.length - 1, metrics.sectorIdx);
+  const art = document.querySelector('img[data-sector="' + (idx + 1) + '"]');
+  const artH = 640;
+  if (art && art.complete && art.naturalWidth) {
+    const sw = art.naturalWidth, sh = art.naturalHeight;
+    const scale = Math.max(W / sw, artH / sh);
+    const dw = sw * scale, dh = sh * scale;
+    ctx.drawImage(art, (W - dw) / 2, (artH - dh) / 2, dw, dh);
+  }
+  const fade = ctx.createLinearGradient(0, artH * .30, 0, artH + 30);
+  fade.addColorStop(0, 'rgba(5,10,17,0)');
+  fade.addColorStop(.5, 'rgba(5,10,17,.55)');
+  fade.addColorStop(.82, 'rgba(4,9,14,.96)');
+  fade.addColorStop(1, '#04090E');
+  ctx.fillStyle = fade; ctx.fillRect(0, artH * .30, W, artH * .70 + 30);
+  const vign = ctx.createLinearGradient(0, 0, W, 0);
+  vign.addColorStop(0, 'rgba(4,9,14,.55)');
+  vign.addColorStop(.28, 'rgba(4,9,14,0)');
+  vign.addColorStop(.72, 'rgba(4,9,14,0)');
+  vign.addColorStop(1, 'rgba(4,9,14,.55)');
+  ctx.fillStyle = vign; ctx.fillRect(0, 0, W, artH);
+
+  // 星点与光晕
+  let seed = 20261108;
+  const rnd = function () { seed = (seed * 1103515245 + 12345) % 2147483648; return seed / 2147483648; };
+  for (let i = 0; i < 130; i++) {
+    const x = rnd() * W, y = rnd() * (artH + 160);
+    const r = rnd() * 1.5 + .4;
+    ctx.fillStyle = 'rgba(233,241,247,' + (0.12 + rnd() * 0.4).toFixed(2) + ')';
+    ctx.beginPath(); ctx.arc(x, y, r, 0, 6.2832); ctx.fill();
+  }
+  const halo = ctx.createRadialGradient(W * .16, -60, 0, W * .16, -60, 520);
+  halo.addColorStop(0, 'rgba(240,163,62,.16)');
+  halo.addColorStop(1, 'rgba(240,163,62,0)');
+  ctx.fillStyle = halo; ctx.fillRect(0, 0, W, 620);
+
+  // 内框
+  ctx.strokeStyle = 'rgba(240,163,62,.16)';
+  ctx.lineWidth = 1.5;
+  roundRectPath(ctx, 40, 40, W - 80, H - 80, 20);
+  ctx.stroke();
+
+  // 眉标
+  ctx.textBaseline = 'alphabetic';
+  ctx.fillStyle = '#F0A33E';
+  ctx.font = '500 26px ' + mono;
+  ctx.fillText('VSL · 远星航程', 84, 850);
+  const d = new Date(session.end || Date.now());
+  const stamp = d.getFullYear() + '.' + pad2(d.getMonth() + 1) + '.' + pad2(d.getDate()) +
+    '  ' + pad2(d.getHours()) + ':' + pad2(d.getMinutes());
+  ctx.fillStyle = 'rgba(131,153,172,.85)';
+  ctx.font = '400 24px ' + mono;
+  const stampW = ctx.measureText(stamp).width;
+  ctx.fillText(stamp, W - 84 - stampW, 850);
+
+  // 大数字：本段里程
+  const ly = Math.floor((session.focusSec || 0) / 60);
+  ctx.fillStyle = '#E9F1F7';
+  ctx.font = '400 168px ' + mono;
+  ctx.fillText('+' + ly, 84, 1010);
+  const numW = ctx.measureText('+' + ly).width;
+  ctx.fillStyle = '#8399AC';
+  ctx.font = '400 46px ' + mono;
+  ctx.fillText('ly', 84 + numW + 18, 1010);
+
+  ctx.fillStyle = 'rgba(131,153,172,.8)';
+  ctx.font = '400 24px ' + sans;
+  ctx.fillText('本段航程 · ' + (session.taskTitle || '未指派任务'), 88, 1060);
+
+  // 分隔
+  ctx.fillStyle = 'rgba(233,241,247,.10)';
+  ctx.fillRect(84, 1102, W - 168, 1);
+
+  // 星区
+  const sector = SECTORS[idx];
+  ctx.fillStyle = '#E9F1F7';
+  ctx.font = '400 62px ' + serif;
+  ctx.fillText(pad2(sector.n), 84, 1190);
+  ctx.fillStyle = '#F0A33E';
+  ctx.fillText(sector.name, 218, 1190);
+  if (newSector) {
+    ctx.fillStyle = 'rgba(240,163,62,.9)';
+    ctx.font = '500 22px ' + sans;
+    ctx.fillText('首次进入', 88, 1236);
+  }
+
+  // 三项数据
+  const stats = [
+    ['本段专注', fmtClock(session.focusSec || 0)],
+    ['累计里程', metrics.totalLy + ' ly'],
+    ['连续航行', metrics.streak + ' 天']
+  ];
+  stats.forEach(function (it, i) {
+    const x = 84 + i * 300;
+    ctx.fillStyle = 'rgba(131,153,172,.75)';
+    ctx.font = '400 20px ' + sans;
+    ctx.fillText(it[0], x, 1296);
+    ctx.fillStyle = '#E9F1F7';
+    ctx.font = '400 34px ' + mono;
+    ctx.fillText(it[1], x, 1338);
+  });
+
+  // 航程线
+  const lineY = 1386, x0 = 668, x1 = 996;
+  const n = SECTORS.length;
+  ctx.strokeStyle = 'rgba(131,153,172,.28)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(x0, lineY); ctx.lineTo(x1, lineY); ctx.stroke();
+  for (let i = 0; i < n; i++) {
+    const x = x0 + (x1 - x0) * (i / (n - 1));
+    const on = i <= idx;
+    ctx.fillStyle = on ? '#F0A33E' : 'rgba(131,153,172,.35)';
+    ctx.beginPath(); ctx.arc(x, lineY, on ? 4 : 3, 0, 6.2832); ctx.fill();
+    if (i === idx) {
+      ctx.strokeStyle = 'rgba(240,163,62,.5)';
+      ctx.beginPath(); ctx.arc(x, lineY, 10, 0, 6.2832); ctx.stroke();
+    }
+  }
+
+  // 页脚
+  ctx.fillStyle = 'rgba(131,153,172,.55)';
+  ctx.font = '400 20px ' + mono;
+  ctx.fillText('FOCUS = DISTANCE', 84, 1386);
+  return cvs;
+}
+function showVoyageCard(session, metrics, newSector) {
+  const modal = $('#cardModal');
+  if (!modal) return;
+  const cvs = buildVoyageCard(session, metrics, newSector);
+  lastCard = cvs;
+  $('#cardImg').src = cvs.toDataURL('image/png');
+  $('#cardShare').style.display = (navigator.canShare ? 'inline-flex' : 'none');
+  modal.classList.add('is-open');
+}
+function closeVoyageCard() {
+  const modal = $('#cardModal');
+  if (modal) modal.classList.remove('is-open');
+}
+function cardFile() {
+  return new Promise(function (resolve) {
+    if (!lastCard) return resolve(null);
+    lastCard.toBlob(function (b) {
+      resolve(b ? new File([b], '远星航程-航程卡.png', { type: 'image/png' }) : null);
+    }, 'image/png');
+  });
+}
+async function shareVoyageCard() {
+  const f = await cardFile();
+  if (!f || !navigator.canShare || !navigator.canShare({ files: [f] })) {
+    showToast('这个浏览器不支持直接分享，可以先保存图片再发给朋友');
+    return;
+  }
+  try {
+    await navigator.share({ files: [f], title: '远星航程', text: '刚完成一段航程' });
+  } catch (e) { /* 用户取消 */ }
+}
+function saveVoyageCard() {
+  if (!lastCard) return;
+  const a = document.createElement('a');
+  const now = new Date();
+  a.download = '远星航程-' + now.getFullYear() + pad2(now.getMonth() + 1) + pad2(now.getDate()) + '.png';
+  a.href = lastCard.toDataURL('image/png');
+  a.click();
+  showToast('航程卡已保存，可在相册或下载目录里找到');
 }
 function beginTicking() {
   stopTicking();
@@ -1515,20 +1878,21 @@ function renderTimer() {
     $('#dialTime').classList.toggle('is-low', remain <= 60);
     document.body.classList.remove('is-cruising');
     document.body.classList.add('is-docked');
-    if (lastStateLabel !== 'DOCKED') { $('#dialState').textContent = 'DOCKED'; lastStateLabel = 'DOCKED'; }
+    if (lastStateLabel !== 'DOWNTIME') { $('#dialState').textContent = 'DOWNTIME'; lastStateLabel = 'DOWNTIME'; }
     const bar = $('#progressBar');
     if (bar) bar.style.width = ((el / planned) * 100).toFixed(2) + '%';
     const ly = $('#deckLy');
-    if (ly) ly.textContent = '今日休整 ' + todayRestMin() + ' 分钟';
+    if (ly) ly.textContent = (window.__restGlints ? '拾起 ' + window.__restGlints + ' 颗星' : '今日休整 ' + todayRestMin() + ' 分钟');
     const plan = $('#dialPlan');
-    if (plan) plan.textContent = '计划休整 ' + Math.round(planned / 60) + ' 分钟';
+    if (plan) plan.textContent = remain <= 60 ? '快结束了 · 再歇一分钟' : '点舷窗里的星子，慢慢歇一会';
     const elRead = $('#elRead');
     if (elRead) elRead.textContent = fmtClock(el);
     return;
   }
   document.body.classList.remove('is-docked');
   const a = S.active;
-  const planned = a ? a.plannedSec : S.settings.duration * 60;
+  const restPlan = clamp(Math.round(S.settings.restDuration || 15), 1, 90) * 60;
+  const planned = S.mode === 'rest' ? restPlan : (a ? a.plannedSec : S.settings.duration * 60);
   const elapsed = a ? activeElapsed() : 0;
   const remain = Math.max(0, planned - elapsed);
   const timeEl = $('#dialTime');
@@ -1542,7 +1906,7 @@ function renderTimer() {
   }
 
   document.body.classList.toggle('is-cruising', !!(a && a.running));
-  const label = !a ? 'STANDBY' : (a.running ? 'CRUISING' : 'HOLD');
+  const label = S.mode === 'rest' ? 'DOWNTIME' : (!a ? 'STANDBY' : (a.running ? 'CRUISING' : 'HOLD'));
   if (label !== lastStateLabel) {
     $('#dialState').textContent = label;
     lastStateLabel = label;
@@ -1552,7 +1916,9 @@ function renderTimer() {
   const bar = $('#progressBar');
   if (bar) bar.style.width = (ratio * 100).toFixed(2) + '%';
   const ly = $('#deckLy');
-  if (ly) ly.textContent = (elapsed / 60).toFixed(1) + ' / ' + (planned / 60).toFixed(0) + ' ly';
+  if (ly) ly.textContent = S.mode === 'rest'
+    ? (window.__restGlints ? '拾起 ' + window.__restGlints + ' 颗星' : '今日休整 ' + todayRestMin() + ' 分钟')
+    : (elapsed / 60).toFixed(1) + ' / ' + (planned / 60).toFixed(0) + ' ly';
 
   const elRead = $('#elRead');
   if (elRead) elRead.textContent = fmtClock(elapsed);
@@ -1630,6 +1996,7 @@ function renderTaskSelect() {
 }
 
 function renderVoyage() {
+  document.body.classList.toggle('is-rest', S.mode === 'rest');
   const m = computeMetrics();
   const sector = SECTORS[m.sectorIdx];
 
@@ -1652,8 +2019,8 @@ function renderVoyage() {
   $('#dialPlan').textContent = (isRest ? '计划休整 ' : '计划航段 ') + Math.round(planned / 60) + ' 分钟';
 
   $('#modeNote').textContent = isRest
-    ? '休整模式：靠港放松，结束提醒返航'
-    : '专注模式：航行一段，专注即里程';
+    ? '休整 · 靠港放松，结束提醒返航'
+    : '专注 · 航行即里程';
   $('#restRow').hidden = !isRest;
   const seg = $('#modeSeg');
   if (seg) {
@@ -1668,7 +2035,7 @@ function renderVoyage() {
 
   const dbar = $('#dailyBar');
   if (dbar) dbar.style.width = (clamp(m.todayMin / S.settings.dailyGoal, 0, 1) * 100).toFixed(1) + '%';
-  $('#dailyRead').textContent = '今日专注 ' + Math.round(m.todayMin) + ' / ' + S.settings.dailyGoal + ' 分钟 · 休整 ' + todayRestMin() + ' 分钟';
+  $('#dailyRead').textContent = '专注 ' + Math.round(m.todayMin) + '/' + S.settings.dailyGoal + ' 分 · 休整 ' + todayRestMin() + ' 分';
 
   renderTaskSelect();
 
@@ -1785,6 +2152,21 @@ function renderMissions() {
 
 /* ---------- 日志 ---------- */
 let logFilter = 'all';
+function metricsAt(session) {
+  const done = S.sessions.filter(function (s) { return s.completed && s.end <= session.end; });
+  const totalLy = Math.floor(done.reduce(function (a, s) { return a + (s.focusSec || 0); }, 0) / 60);
+  let sectorIdx = 0;
+  SECTORS.forEach(function (sec, i) { if (totalLy >= sec.need) sectorIdx = i; });
+  const daySet = {};
+  done.forEach(function (s) { daySet[dayKey(s.end)] = true; });
+  let streak = 0, cur = new Date(session.end);
+  if (!daySet[dayKey(cur.getTime())]) cur.setDate(cur.getDate() - 1);
+  while (daySet[dayKey(cur.getTime())]) {
+    streak += 1; cur.setDate(cur.getDate() - 1);
+    if (streak > 4000) break;
+  }
+  return { totalLy: totalLy, sectorIdx: sectorIdx, streak: streak };
+}
 function renderLog() {
   const list = $('#logList');
   const total = S.sessions.length;
@@ -1825,7 +2207,7 @@ function renderLog() {
       dateCN(ts) + ' ' + weekdayCN(ts) + ' · ' + items.length + ' 段</span>' +
       '<span class="sum">+' + Math.floor(sumSec / 60) + ' ly</span></div>';
     items.forEach(function (s) {
-      out += '<div class="log-row">' +
+      out += '<div class="log-row"' + (s.completed ? ' data-card="' + s.id + '" title="点开这一段航程卡"' : '') + '>' +
         '<div class="log-time">' + clockOf(s.start) + '</div>' +
         '<div class="log-task">' + escapeHTML(s.taskTitle || '未指派任务') +
         '<span class="sub">计划 ' + Math.round(s.plannedSec / 60) + ' 分钟' + (s.completed ? ' · 抵达' : ' · 中断') + '</span>' +
@@ -2136,26 +2518,26 @@ function connectCloud(cb) {
 
 function cloudPayload() {
   return {
-    v: S.v,
+    v: DATA_VERSION,
     settings: S.settings,
     missions: S.missions,
     sessions: S.sessions,
-    currentTaskId: S.currentTaskId
+    currentTaskId: S.currentTaskId,
+    mode: S.mode,
+    rests: S.rests
   };
 }
 
 function adoptCloudData(data, updatedAt) {
   if (!data || typeof data !== 'object') return false;
-  if (S.active) {
-    setCloudMsg($('#cloudSyncMsg'), '正在计时，先结束或返航再同步', 'bad');
+  if (S.active || S.rest) {
+    setCloudMsg($('#cloudSyncMsg'), '正在计时或休整，先结束再同步', 'bad');
     return false;
   }
-  const base = defaultState();
-  S.settings = Object.assign({}, DEFAULT_SETTINGS, data.settings || {});
-  S.missions = Array.isArray(data.missions) ? data.missions : [];
-  S.sessions = Array.isArray(data.sessions) ? data.sessions : [];
-  S.currentTaskId = data.currentTaskId || null;
+  S = migrateState(data);
   S.active = null;
+  S.rest = null;
+  if (S.mode === 'rest') S.mode = 'voyage';
   save();
   renderAll();
   cloudSyncAt = Date.parse(updatedAt) || Date.now();
@@ -2427,6 +2809,7 @@ function tone(freq, dur, delay, vol, type) {
 function playCue(kind) {
   if (!S.settings.sound || S.settings.muted) return;
   if (kind === 'start') { tone(392, 0.18, 0, 0.14); tone(587, 0.24, 0.16, 0.1); }
+  else if (kind === 'glint') { tone(880, 0.09, 0, 0.05); }
   else if (kind === 'pause') { tone(330, 0.16, 0, 0.1); }
   else if (kind === 'resume') { tone(494, 0.16, 0, 0.1); tone(659, 0.2, 0.14, 0.08); }
   else if (kind === 'arrive') { tone(523, 0.28, 0, 0.16); tone(784, 0.36, 0.24, 0.13); tone(1047, 0.5, 0.5, 0.09); }
@@ -2501,7 +2884,7 @@ function initStarfield() {
   if (!canvas || !canvas.getContext) return;
   const ctx = canvas.getContext('2d');
   const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  const dpr = Math.min(window.innerWidth < 720 ? 1.5 : 2, window.devicePixelRatio || 1);
   let stars = [], w = 0, h = 0, rafId = 0, lastDraw = 0, cruiseT0 = 0;
 
   function build() {
@@ -2523,12 +2906,27 @@ function initStarfield() {
     ctx.clearRect(0, 0, w, h);
     ctx.globalCompositeOperation = 'source-over';
 
-    const neb1 = ctx.createRadialGradient(w * 0.78, h * 0.16, 0, w * 0.78, h * 0.16, Math.max(w, h) * 0.55);
+    const time = t / 1000;
+    const drift = Math.sin(time * 0.018) * w * 0.035;
+    const neb1 = ctx.createRadialGradient(w * 0.78 + drift, h * 0.16, 0, w * 0.78 + drift, h * 0.16, Math.max(w, h) * 0.55);
     neb1.addColorStop(0, 'rgba(31,66,86,.42)');
     neb1.addColorStop(0.45, 'rgba(20,44,58,.16)');
     neb1.addColorStop(1, 'rgba(5,10,17,0)');
     ctx.fillStyle = neb1;
     ctx.fillRect(0, 0, w, h);
+
+    // 偶发流星
+    const meteor = (time % 17) / 17;
+    if (meteor < 0.06) {
+      const p = meteor / 0.06;
+      const mx = w * (0.08 + p * 0.55);
+      const my = h * (0.06 + p * 0.12);
+      const mgr = ctx.createLinearGradient(mx, my, mx - w * 0.10, my - h * 0.045);
+      mgr.addColorStop(0, 'rgba(255,238,214,' + (0.5 * Math.sin(p * Math.PI)).toFixed(3) + ')');
+      mgr.addColorStop(1, 'rgba(255,238,214,0)');
+      ctx.strokeStyle = mgr; ctx.lineWidth = 1.6;
+      ctx.beginPath(); ctx.moveTo(mx, my); ctx.lineTo(mx - w * 0.10, my - h * 0.045); ctx.stroke();
+    }
 
     const neb2 = ctx.createRadialGradient(w * 0.12, h * 0.85, 0, w * 0.12, h * 0.85, Math.max(w, h) * 0.5);
     neb2.addColorStop(0, 'rgba(66,54,34,.26)');
@@ -2536,7 +2934,6 @@ function initStarfield() {
     ctx.fillStyle = neb2;
     ctx.fillRect(0, 0, w, h);
 
-    const time = t / 1000;
     const cruise = !reduce && document.body.classList.contains('is-cruising');
 
     if (cruise) {
@@ -2942,6 +3339,24 @@ function bindEvents() {
   });
 
   $('#modalCancel').addEventListener('click', closeModal);
+  const logList = $('#logList');
+  if (logList) logList.addEventListener('click', function (e) {
+    const row = e.target.closest('[data-card]');
+    if (!row) return;
+    const id = row.getAttribute('data-card');
+    const session = S.sessions.filter(function (x) { return x.id === id; })[0];
+    if (!session) return;
+    showVoyageCard(session, metricsAt(session), false);
+  });
+  const cardModal = $('#cardModal');
+  if (cardModal) {
+    $('#cardClose').addEventListener('click', closeVoyageCard);
+    $('#cardSave').addEventListener('click', saveVoyageCard);
+    $('#cardShare').addEventListener('click', shareVoyageCard);
+    cardModal.addEventListener('click', function (e) {
+      if (e.target === cardModal) closeVoyageCard();
+    });
+  }
   $('#modalConfirm').addEventListener('click', function () {
     const cb = modalCallback;
     closeModal();
@@ -2952,6 +3367,10 @@ function bindEvents() {
   });
 
   document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') {
+      const cm = $('#cardModal');
+      if (cm && cm.classList.contains('is-open')) { closeVoyageCard(); return; }
+    }
     if (e.key === 'Escape' && $('#modal').classList.contains('is-open')) { closeModal(); return; }
     if (e.target.closest('input, select, textarea, button, a')) return;
     if (e.key === ' ' && currentView() === 'voyage') { e.preventDefault(); toggleStart(); }
@@ -2959,9 +3378,21 @@ function bindEvents() {
   });
 
   document.addEventListener('visibilitychange', function () {
-    if (document.hidden && S.active && S.active.running && S.settings.strict) {
-      finishTimer(false, '离开页面');
+    if (document.hidden) {
+      try { if (AC && AC.state === 'running' && ambientNodes) AC.suspend(); } catch (e) {}
+      if (S.active && S.active.running && S.settings.strict) {
+        finishTimer(false, '离开页面');
+      }
+      save();
+      return;
     }
+    // 回到前台：用时间戳补齐，而不是等每秒一次的定时器
+    try { if (AC && AC.state === 'suspended' && ambientNodes) AC.resume(); } catch (e) {}
+    tick();
+    renderTimer();
+    if (S.active && S.active.running) { syncAmbientIndicator(); startAmbient(); }
+    const sc = $('#sceneCanvas');
+    if (sc && window.__sceneRestart) window.__sceneRestart();
   });
 
   window.addEventListener('pagehide', function () { save(); });
@@ -3015,13 +3446,16 @@ function initScene() {
   if (!cv || !cv.getContext) return;
   const ctx = cv.getContext('2d');
   const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const dpr = Math.min(2, window.devicePixelRatio || 1);
-  let W = 0, H = 0, raf = 0, last = 0, t = 0;
+  const dpr = Math.min(window.innerWidth < 720 ? 1.5 : 2, window.devicePixelRatio || 1);
+  let W = 0, H = 0, raf = 0, last = 0, t = 0, lastPaint = 0;
   const layers = [];
   const ship = { x: 0, y: 0, len: 0 };
   const warp = [], dust = [];
   let ember = [];
   let spd = 1, approach = 0, dockK = 0;
+  let restK = 0, glintCount = 0, supplyT0 = -1;
+  const glints = [];
+  const port = { x: 0, y: 0, r: 0 };
 
   function build() {
     W = cv.clientWidth || 600;
@@ -3183,6 +3617,9 @@ function initScene() {
 
     // 加速 / 减速：速度平滑过渡，避免开计时瞬间硬切
     const docked = !reduce && document.body.classList.contains('is-docked');
+    const restMode = document.body.classList.contains('is-rest');
+    if (reduce) restK = restMode ? 1 : 0;
+    else restK += ((restMode ? 1 : 0) - restK) * Math.min(1, dt * 1.7);
     const targetSpd = cruise ? 5.2 : (docked ? 0.52 : 1);
     spd += (targetSpd - spd) * Math.min(1, dt * (cruise ? 1.35 : 2.6));
     approach += ((cruise ? 1 : 0) - approach) * Math.min(1, dt * 1.1);
@@ -3344,6 +3781,8 @@ function initScene() {
 
     drawShip(cruise);
 
+    if (restK > 0.01) drawLounge(restK, dt);
+
     // 喷口余烬：向后飞散并淡出
     if (spd > 1.5) {
       if (ember.length < 30 && Math.random() < 0.55) {
@@ -3373,11 +3812,319 @@ function initScene() {
     ctx.restore();
   }
 
+
+  // 休整：温暖的观景舱，和外面的深空彻底换一个气氛
+  function drawLounge(k, dt) {
+    const R = Math.min(W * 0.30, H * 0.36);
+    const px = W * 0.58, py = H * 0.38;
+    port.x = px; port.y = py; port.r = R;
+
+    ctx.save();
+    ctx.globalAlpha = k;
+
+    // 舱内墙：暖近黑
+    const wall = ctx.createLinearGradient(0, 0, W * 0.4, H);
+    wall.addColorStop(0, '#171009');
+    wall.addColorStop(0.55, '#0D0A07');
+    wall.addColorStop(1, '#070505');
+    ctx.fillStyle = wall;
+    ctx.fillRect(-20, -20, W + 40, H + 40);
+
+    // 暖灯
+    const lamp = ctx.createRadialGradient(W * 0.12, H * 0.06, 0, W * 0.12, H * 0.06, Math.max(W, H) * 0.55);
+    lamp.addColorStop(0, 'rgba(240,163,62,.16)');
+    lamp.addColorStop(0.45, 'rgba(200,120,60,.05)');
+    lamp.addColorStop(1, 'rgba(160,90,40,0)');
+    ctx.fillStyle = lamp; ctx.fillRect(-20, -20, W + 40, H + 40);
+
+    // 舱壁接缝
+    ctx.strokeStyle = 'rgba(240,200,150,.05)'; ctx.lineWidth = 1;
+    for (let i = 1; i < 5; i++) {
+      const x = W * i / 5;
+      ctx.beginPath(); ctx.moveTo(x, H * 0.05); ctx.lineTo(x + 6, H * 0.90); ctx.stroke();
+    }
+
+    // 舱顶吊灯
+    const lampX = W * 0.12, lampY = H * 0.09;
+    ctx.beginPath(); ctx.moveTo(lampX, 0); ctx.lineTo(lampX, lampY - 6);
+    ctx.strokeStyle = 'rgba(131,153,172,.25)'; ctx.lineWidth = 1; ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(lampX - 12, lampY); ctx.lineTo(lampX + 12, lampY);
+    ctx.lineTo(lampX + 7, lampY + 7); ctx.lineTo(lampX - 7, lampY + 7);
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(240,163,62,.22)'; ctx.fill();
+    ctx.strokeStyle = 'rgba(255,214,160,.34)'; ctx.lineWidth = 1; ctx.stroke();
+    const cone = ctx.createRadialGradient(lampX, lampY + 4, 0, lampX, lampY + 4, H * 0.42);
+    cone.addColorStop(0, 'rgba(255,206,150,.16)');
+    cone.addColorStop(1, 'rgba(255,206,150,0)');
+    ctx.fillStyle = cone;
+    ctx.beginPath(); ctx.moveTo(lampX - 12, lampY + 6); ctx.lineTo(lampX + 12, lampY + 6);
+    ctx.lineTo(lampX + H * 0.26, H); ctx.lineTo(lampX - H * 0.26, H); ctx.closePath(); ctx.fill();
+
+    // 舷窗：窗内是缓慢的星港夜色
+    ctx.save();
+    ctx.beginPath(); ctx.arc(px, py, R - 4, 0, 6.2832); ctx.clip();
+    const sky = ctx.createLinearGradient(px - R, py - R, px + R, py + R);
+    sky.addColorStop(0, '#071019');
+    sky.addColorStop(0.55, '#08151F');
+    sky.addColorStop(1, '#0C1D27');
+    ctx.fillStyle = sky; ctx.fillRect(px - R, py - R, R * 2, R * 2);
+
+    // 慢速星点
+    for (let i = 0; i < 26; i++) {
+      const sx = px - R + ((i * 37.7 + t * 3.2) % (R * 2));
+      const sy = py - R + ((i * 71.3) % (R * 2));
+      const al = 0.34 + 0.36 * Math.abs(Math.sin(t * 0.9 + i));
+      ctx.beginPath(); ctx.arc(sx, sy, 0.8 + (i % 3) * 0.35, 0, 6.2832);
+      ctx.fillStyle = 'rgba(226,238,247,' + al.toFixed(3) + ')'; ctx.fill();
+    }
+
+    // 远处的小行星
+    const qr = R * 0.20, qx = px - R * 0.34, qy = py + R * 0.34;
+    const qg = ctx.createRadialGradient(qx - qr * 0.5, qy - qr * 0.6, qr * 0.1, qx, qy, qr);
+    qg.addColorStop(0, '#2E5866');
+    qg.addColorStop(0.6, '#16323E');
+    qg.addColorStop(1, '#0A1A22');
+    ctx.beginPath(); ctx.arc(qx, qy, qr, 0, 6.2832); ctx.fillStyle = qg; ctx.fill();
+    ctx.beginPath(); ctx.arc(qx, qy, qr - 1, Math.PI * 1.06, Math.PI * 1.66);
+    ctx.strokeStyle = 'rgba(255,214,160,.5)'; ctx.lineWidth = 1.4; ctx.stroke();
+
+    // 星港主体：环形站 + 桁架 + 舱窗灯火
+    const stx = px + R * 0.40, sty = py + R * 0.40, sr = R * 0.46;
+    ctx.save();
+    ctx.translate(stx, sty);
+    ctx.rotate(-0.3);
+    ctx.beginPath(); ctx.ellipse(0, 0, sr, sr * 0.38, 0, 0, 6.2832);
+    ctx.strokeStyle = 'rgba(176,200,216,.55)'; ctx.lineWidth = 2.6; ctx.stroke();
+    ctx.beginPath(); ctx.ellipse(0, 0, sr * 0.66, sr * 0.25, 0, 0, 6.2832);
+    ctx.strokeStyle = 'rgba(120,150,172,.28)'; ctx.lineWidth = 1; ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-sr, 0); ctx.lineTo(sr, 0);
+    ctx.strokeStyle = 'rgba(150,178,198,.42)'; ctx.lineWidth = 1.6; ctx.stroke();
+    ctx.fillStyle = 'rgba(10,20,26,.96)';
+    ctx.fillRect(-sr * 0.20, -sr * 0.16, sr * 0.40, sr * 0.32);
+    ctx.strokeStyle = 'rgba(240,163,62,.34)'; ctx.lineWidth = 1; ctx.strokeRect(-sr * 0.20, -sr * 0.16, sr * 0.40, sr * 0.32);
+    // 舱窗灯火
+    for (let i = 0; i < 9; i++) {
+      const bl = 0.45 + 0.55 * Math.abs(Math.sin(t * 1.5 + i * 1.3));
+      const wx = -sr * 0.16 + (i % 3) * sr * 0.16;
+      const wy = -sr * 0.07 + Math.floor(i / 3) * sr * 0.10;
+      ctx.beginPath(); ctx.arc(wx, wy, 1.1, 0, 6.2832);
+      ctx.fillStyle = 'rgba(255,214,150,' + (0.55 * bl).toFixed(3) + ')'; ctx.fill();
+    }
+    // 航标灯
+    for (let i = 0; i < 5; i++) {
+      const a2 = t * 0.85 + i * 1.26;
+      const lx = Math.cos(a2) * sr, ly = Math.sin(a2) * sr * 0.38;
+      const bl = 0.3 + 0.7 * Math.abs(Math.sin(t * 1.7 + i));
+      ctx.beginPath(); ctx.arc(lx, ly, 1.5, 0, 6.2832);
+      ctx.fillStyle = i % 2 ? 'rgba(255,214,150,' + (0.6 * bl).toFixed(3) + ')' : 'rgba(176,214,236,' + (0.55 * bl).toFixed(3) + ')';
+      ctx.fill();
+    }
+    ctx.restore();
+
+    // 偶尔一颗流星
+    const cyc = (t % 11) / 11;
+    if (cyc < 0.12) {
+      const p = cyc / 0.12;
+      const sx0 = px - R * 0.6 + p * R * 0.5;
+      const sy0 = py - R * 0.35 + p * R * 0.2;
+      ctx.beginPath();
+      ctx.moveTo(sx0, sy0); ctx.lineTo(sx0 + R * 0.22, sy0 - R * 0.07);
+      ctx.strokeStyle = 'rgba(255,236,206,' + (0.5 * Math.sin(p * Math.PI)).toFixed(3) + ')';
+      ctx.lineWidth = 1.2; ctx.stroke();
+    }
+
+    // 星港补给：拾满 5 颗后有一艘拖船过窗
+    if (supplyT0 >= 0) {
+      const dur = 12;
+      const p = (t - supplyT0) / dur;
+      if (p > 1) supplyT0 = -1;
+      else if (p >= 0) {
+        const ease = p < .5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2;
+        const x = px + R * (1.05 - 2.1 * ease);
+        const y = py - R * 0.30 + Math.sin(p * 7.5) * R * 0.02;
+        const s = R * 0.10;
+        const ang = -0.06 + Math.sin(p * 3.2) * 0.03;
+
+        // 拖索，连向星港
+        ctx.strokeStyle = 'rgba(176,214,236,.14)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(x + s * 0.4, y + s * 0.3);
+        ctx.quadraticCurveTo(px + R * 0.2, py - R * 0.12, px + R * 0.46, py - R * 0.02);
+        ctx.stroke();
+
+        ctx.save();
+        ctx.translate(x, y); ctx.rotate(ang);
+
+        // 拖船壳体
+        const hull = ctx.createLinearGradient(0, -s * 0.55, 0, s * 0.55);
+        hull.addColorStop(0, '#6B8EA0');
+        hull.addColorStop(.4, '#2B4959');
+        hull.addColorStop(1, '#0A161E');
+        ctx.beginPath();
+        ctx.moveTo(-s * 1.35, 0);
+        ctx.lineTo(-s * 0.9, -s * 0.42);
+        ctx.lineTo(s * 0.9, -s * 0.36);
+        ctx.lineTo(s * 1.3, 0);
+        ctx.lineTo(s * 0.9, s * 0.34);
+        ctx.lineTo(-s * 0.9, s * 0.4);
+        ctx.closePath();
+        ctx.fillStyle = hull; ctx.fill();
+        ctx.strokeStyle = 'rgba(233,241,247,.30)'; ctx.lineWidth = 1.1; ctx.stroke();
+
+        // 两个货舱
+        for (let i = 0; i < 2; i++) {
+          const cxp = -s * 0.75 + i * s * 1.5;
+          const pod = ctx.createRadialGradient(cxp - s * 0.12, -s * 0.1, 0, cxp, 0, s * 0.42);
+          pod.addColorStop(0, '#5B7686');
+          pod.addColorStop(1, '#0C1A23');
+          ctx.beginPath(); ctx.arc(cxp, 0, s * 0.4, 0, 6.2832);
+          ctx.fillStyle = pod; ctx.fill();
+          ctx.strokeStyle = 'rgba(233,241,247,.14)'; ctx.stroke();
+        }
+
+        // 舷窗与航灯
+        for (let w = 0; w < 3; w++) {
+          ctx.fillStyle = 'rgba(255,214,150,' + (0.5 + 0.3 * Math.sin(t * 2.4 + w)).toFixed(3) + ')';
+          ctx.beginPath(); ctx.arc(-s * 0.95 + w * s * 0.42, -s * 0.14, s * 0.09, 0, 6.2832); ctx.fill();
+        }
+        const navBlink = (t * 1.6) % 1 < 0.5;
+        ctx.fillStyle = navBlink ? 'rgba(217,91,68,.95)' : 'rgba(217,91,68,.25)';
+        ctx.beginPath(); ctx.arc(s * 1.22, 0, s * 0.1, 0, 6.2832); ctx.fill();
+
+        // 尾焰
+        const tail = ctx.createLinearGradient(-s * 1.35, 0, -s * 2.6, 0);
+        tail.addColorStop(0, 'rgba(255,226,180,.7)');
+        tail.addColorStop(.4, 'rgba(240,163,62,.35)');
+        tail.addColorStop(1, 'rgba(240,163,62,0)');
+        ctx.beginPath();
+        ctx.moveTo(-s * 1.3, -s * 0.1);
+        ctx.lineTo(-s * 2.5, 0);
+        ctx.lineTo(-s * 1.3, s * 0.1);
+        ctx.closePath();
+        ctx.fillStyle = tail; ctx.fill();
+
+        ctx.restore();
+
+        // 引擎辉光
+        const glow = ctx.createRadialGradient(x - s * 1.6, y, 0, x - s * 1.6, y, s * 1.1);
+        glow.addColorStop(0, 'rgba(255,236,206,.5)');
+        glow.addColorStop(1, 'rgba(255,236,206,0)');
+        ctx.fillStyle = glow;
+        ctx.beginPath(); ctx.arc(x - s * 1.6, y, s * 1.1, 0, 6.2832); ctx.fill();
+      }
+    }
+
+    // 被拾起的星子
+    glints.forEach(function (g) {
+      const tw = 0.55 + 0.45 * Math.sin(t * 3 + g.life * 6);
+      ctx.beginPath(); ctx.arc(g.x, g.y, g.s * (0.6 + tw * 0.6), 0, 6.2832);
+      ctx.fillStyle = 'rgba(255,226,180,' + (0.5 + 0.35 * tw) * Math.min(1, g.life * 2) + ')';
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(g.x - g.s * 2.4, g.y); ctx.lineTo(g.x + g.s * 2.4, g.y);
+      ctx.moveTo(g.x, g.y - g.s * 2.4); ctx.lineTo(g.x, g.y + g.s * 2.4);
+      ctx.strokeStyle = 'rgba(255,232,196,' + (0.22 * Math.min(1, g.life * 2)).toFixed(3) + ')';
+      ctx.lineWidth = 0.9; ctx.stroke();
+    });
+    ctx.restore();
+
+    // 窗框
+    const ring = ctx.createLinearGradient(px - R, py - R, px + R, py + R);
+    ring.addColorStop(0, '#41525D');
+    ring.addColorStop(0.5, '#1E2E38');
+    ring.addColorStop(1, '#0E1A20');
+    ctx.beginPath();
+    ctx.arc(px, py, R - 2.5, 0, 6.2832);
+    ctx.strokeStyle = ring; ctx.lineWidth = 5.5; ctx.stroke();
+    ctx.beginPath(); ctx.arc(px, py, R - 4.6, 0, 6.2832);
+    ctx.strokeStyle = 'rgba(240,163,62,.22)'; ctx.lineWidth = 1; ctx.stroke();
+    const breath = 0.10 + 0.06 * Math.sin(t * 0.7);
+    ctx.beginPath(); ctx.arc(px, py, R + 8, 0, 6.2832);
+    ctx.strokeStyle = 'rgba(240,163,62,' + breath.toFixed(3) + ')'; ctx.lineWidth = 5; ctx.stroke();
+
+    // 螺栓
+    for (let i = 0; i < 8; i++) {
+      const a3 = i * Math.PI / 4 + 0.2;
+      ctx.beginPath();
+      ctx.arc(px + Math.cos(a3) * (R - 2.5), py + Math.sin(a3) * (R - 2.5), 1.6, 0, 6.2832);
+      ctx.fillStyle = 'rgba(131,153,172,.35)'; ctx.fill();
+    }
+
+    // 玻璃反光
+    ctx.beginPath();
+    ctx.arc(px, py, R - 12, Math.PI * 1.18, Math.PI * 1.68);
+    ctx.strokeStyle = 'rgba(255,255,255,.07)'; ctx.lineWidth = 9; ctx.stroke();
+
+    // 舱内桌面 + 茶杯
+    const deskY = H * 0.87;
+    const dg = ctx.createLinearGradient(0, deskY, 0, H);
+    dg.addColorStop(0, '#2A1F16'); dg.addColorStop(1, '#0D0907');
+    ctx.fillStyle = dg;
+    ctx.beginPath();
+    ctx.moveTo(-10, deskY + 8);
+    ctx.lineTo(W * 0.34, deskY);
+    ctx.lineTo(W + 10, deskY + 16);
+    ctx.lineTo(W + 10, H + 10); ctx.lineTo(-10, H + 10);
+    ctx.closePath(); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(-10, deskY + 8); ctx.lineTo(W * 0.34, deskY);
+    ctx.strokeStyle = 'rgba(255,206,150,.34)'; ctx.lineWidth = 1.3; ctx.stroke();
+
+    // 右侧小台面
+    ctx.beginPath();
+    ctx.moveTo(W * 0.80, H * 0.70); ctx.lineTo(W + 4, H * 0.66);
+    ctx.strokeStyle = 'rgba(255,206,150,.22)'; ctx.lineWidth = 1.4; ctx.stroke();
+    const cupX = W * 0.90, cupY = H * 0.675;
+    const cupR = Math.max(5, H * 0.022);
+    ctx.beginPath();
+    ctx.ellipse(cupX, cupY, cupR * 1.5, cupR * 0.5, 0, 0, 6.2832);
+    ctx.fillStyle = '#3A2B19'; ctx.fill();
+    ctx.beginPath(); ctx.arc(cupX, cupY - cupR * 0.55, cupR * 1.05, 0, 6.2832);
+    ctx.fillStyle = '#4B3720'; ctx.fill();
+    ctx.beginPath(); ctx.arc(cupX, cupY - cupR * 0.62, cupR * 0.78, 0, 6.2832);
+    ctx.fillStyle = 'rgba(96,64,32,.92)'; ctx.fill();
+
+    // 桌面暖光池
+    const pool = ctx.createRadialGradient(cupX, cupY, 0, cupX, cupY, Math.max(26, H * 0.16));
+    pool.addColorStop(0, 'rgba(240,163,62,.16)');
+    pool.addColorStop(1, 'rgba(240,163,62,0)');
+    ctx.fillStyle = pool;
+    ctx.beginPath(); ctx.ellipse(cupX, cupY + 4, Math.max(30, H * 0.10), Math.max(10, H * 0.045), 0, 0, 6.2832); ctx.fill();
+
+    // 热气
+    ctx.beginPath();
+    for (let i = 0; i <= 12; i++) {
+      const p = i / 12;
+      const sy = cupY - cupR * 1.6 - p * cupR * 4.4;
+      const sx = cupX + Math.sin(p * 3.4 + t * 0.9) * cupR * 0.9 * p;
+      i ? ctx.lineTo(sx, sy) : ctx.moveTo(sx, sy);
+    }
+    ctx.strokeStyle = 'rgba(255,226,190,.10)'; ctx.lineWidth = 1.2; ctx.stroke();
+
+    // 舱内漂浮的尘埃光斑
+    for (let i = 0; i < 5; i++) {
+      const bx = W * (0.1 + i * 0.19) + Math.sin(t * 0.22 + i) * 14;
+      const by = H * (0.2 + (i % 3) * 0.2) + Math.cos(t * 0.16 + i * 1.7) * 10;
+      const br = Math.max(3, H * 0.012 + i);
+      const bgg = ctx.createRadialGradient(bx, by, 0, bx, by, br);
+      bgg.addColorStop(0, 'rgba(255,214,164,.12)');
+      bgg.addColorStop(1, 'rgba(255,214,164,0)');
+      ctx.fillStyle = bgg;
+      ctx.beginPath(); ctx.arc(bx, by, br, 0, 6.2832); ctx.fill();
+    }
+
+    ctx.restore();
+  }
+
   function loop(now) {
     const deck = $('#deck');
     if (!deck || deck.classList.contains('is-plain')) { raf = 0; return; }
-    draw(now);
     raf = requestAnimationFrame(loop);
+    if (!deck.clientWidth) return;
+    const cruise = document.body.classList.contains('is-cruising');
+    if (now - lastPaint > (cruise ? 26 : 44)) { lastPaint = now; draw(now); }
   }
 
   function start() {
@@ -3389,6 +4136,26 @@ function initScene() {
     build();
     if (reduce) draw(performance.now());
   }
+
+  cv.addEventListener('click', function (ev) {
+    if (restK < 0.4 || port.r <= 0) return;
+    const box = cv.getBoundingClientRect();
+    const x = ev.clientX - box.left, y = ev.clientY - box.top;
+    if (Math.hypot(x - port.x, y - port.y) > port.r - 6) return;
+    glints.push({ x: x, y: y, life: 1, s: 1.1 + Math.random() * 1.7 });
+    if (glints.length > 26) glints.shift();
+    glintCount += 1;
+    window.__restGlints = glintCount;
+    const ly = document.getElementById('deckLy');
+    if (ly) ly.textContent = '拾起 ' + glintCount + ' 颗星';
+    playCue('glint');
+    if (glintCount % 5 === 0) {
+      supplyT0 = t;
+      playCue('resume');
+      showToast('星港补给 · 一艘补给船拖着货舱从舷窗驶过');
+      window.__supply = t;
+    }
+  });
 
   build();
   start();
