@@ -2819,6 +2819,9 @@ function initScene() {
   let W = 0, H = 0, raf = 0, last = 0, t = 0;
   const layers = [];
   const ship = { x: 0, y: 0, len: 0 };
+  const warp = [], dust = [];
+  let ember = [];
+  let spd = 1, approach = 0;
 
   function build() {
     W = cv.clientWidth || 600;
@@ -2839,21 +2842,33 @@ function initScene() {
     ship.len = Math.max(66, Math.min(150, H * 0.62));
     ship.x = W * (W < 420 ? 0.58 : 0.54);
     ship.y = H * 0.42;
+
+    warp.length = 0;
+    const nW = Math.max(20, Math.round(W * 0.055));
+    for (let i = 0; i < nW; i++) {
+      warp.push({ a: Math.random() * 6.2832, r: Math.random(), sp: 0.55 + Math.random() * 0.9 });
+    }
+    dust.length = 0;
+    for (let i = 0; i < 6; i++) {
+      dust.push({ x: Math.random() * W, y: Math.random() * H, w: 26 + Math.random() * 54, a: 0.04 + Math.random() * 0.07 });
+    }
   }
 
   function drawShip(cruise) {
     const L = ship.len;
-    const bob = Math.sin(t * 0.52) * 2.4;
-    const bank = Math.sin(t * 0.31) * 1.4 * (cruise ? 1.8 : 1);
-    const cx = ship.x + Math.sin(t * 0.21) * 4;
+    const bob = Math.sin(t * (cruise ? 0.84 : 0.52)) * (cruise ? 3.6 : 2.4)
+      + (cruise ? Math.sin(t * 13.7) * 0.85 : 0);
+    const bank = Math.sin(t * 0.31) * (cruise ? 2.6 : 1.4);
+    const drift = spd > 1.05 ? (spd - 1) * 1.1 : 0;
+    const cx = ship.x + Math.sin(t * 0.21) * 4 - drift;
     const cy = ship.y + bob;
 
     ctx.save();
     ctx.translate(cx, cy);
     ctx.rotate(bank * Math.PI / 180);
 
-    const flick = 0.72 + Math.sin(t * 9.1) * 0.1 + Math.sin(t * 15.3) * 0.06;
-    const gR = L * (cruise ? 0.37 : 0.24) * flick;
+    const flick = 0.72 + Math.sin(t * (cruise ? 12.4 : 9.1)) * 0.1 + Math.sin(t * 15.3) * 0.06;
+    const gR = L * (cruise ? 0.26 + spd * 0.019 : 0.24) * flick;
     const rg = ctx.createRadialGradient(-L * 0.5, 0, 0, -L * 0.5, 0, gR);
     rg.addColorStop(0, 'rgba(255,197,120,.55)');
     rg.addColorStop(0.35, 'rgba(240,163,62,.22)');
@@ -2861,16 +2876,53 @@ function initScene() {
     ctx.fillStyle = rg;
     ctx.beginPath(); ctx.arc(-L * 0.5, 0, gR, 0, 6.2832); ctx.fill();
 
-    if (cruise) {
-      const tg = ctx.createLinearGradient(-L * 0.5, 0, -L * 0.5 - L * 1.5, 0);
-      tg.addColorStop(0, 'rgba(240,163,62,.26)');
+    // 引擎白热核心
+    const cR = gR * 0.4;
+    const cg = ctx.createRadialGradient(-L * 0.5, 0, 0, -L * 0.5, 0, cR);
+    cg.addColorStop(0, cruise ? 'rgba(255,238,204,.8)' : 'rgba(255,226,182,.42)');
+    cg.addColorStop(1, 'rgba(255,190,110,0)');
+    ctx.fillStyle = cg;
+    ctx.beginPath(); ctx.arc(-L * 0.5, 0, cR, 0, 6.2832); ctx.fill();
+
+    // 尾焰：随航速拉长，形态带抖动，不是一根直线光柱
+    if (cruise || spd > 1.25) {
+      const k = Math.min(1, (spd - 1) / 4.2);
+      const plume = L * (0.5 + k * 0.95) * (0.9 + Math.sin(t * 11.3) * 0.06);
+      const tipY = Math.sin(t * 17.4) * L * 0.012 * (0.4 + k);
+      const wBase = L * (0.042 + 0.028 * k);
+
+      const tg = ctx.createLinearGradient(-L * 0.5, 0, -L * 0.5 - plume, 0);
+      tg.addColorStop(0, 'rgba(255,214,150,' + (0.30 + 0.26 * k).toFixed(3) + ')');
+      tg.addColorStop(0.35, 'rgba(240,163,62,' + (0.14 + 0.16 * k).toFixed(3) + ')');
+      tg.addColorStop(0.72, 'rgba(217,91,68,' + (0.05 + 0.07 * k).toFixed(3) + ')');
       tg.addColorStop(1, 'rgba(240,163,62,0)');
       ctx.fillStyle = tg;
       ctx.beginPath();
-      ctx.moveTo(-L * 0.5, -L * 0.040);
-      ctx.lineTo(-L * 0.5 - L * 1.5, 0);
-      ctx.lineTo(-L * 0.5, L * 0.040);
+      ctx.moveTo(-L * 0.5, -wBase);
+      ctx.quadraticCurveTo(-L * 0.5 - plume * 0.42, -wBase * 0.62, -L * 0.5 - plume, tipY);
+      ctx.quadraticCurveTo(-L * 0.5 - plume * 0.42, wBase * 0.62, -L * 0.5, wBase);
       ctx.closePath(); ctx.fill();
+
+      // 内焰（白热，短一截）
+      const plume2 = plume * 0.62;
+      const tg2 = ctx.createLinearGradient(-L * 0.5, 0, -L * 0.5 - plume2, 0);
+      tg2.addColorStop(0, 'rgba(255,246,228,' + (0.30 + 0.34 * k).toFixed(3) + ')');
+      tg2.addColorStop(0.6, 'rgba(255,216,160,' + (0.12 + 0.16 * k).toFixed(3) + ')');
+      tg2.addColorStop(1, 'rgba(255,200,130,0)');
+      ctx.fillStyle = tg2;
+      ctx.beginPath();
+      ctx.moveTo(-L * 0.5, -wBase * 0.42);
+      ctx.quadraticCurveTo(-L * 0.5 - plume2 * 0.45, -wBase * 0.26, -L * 0.5 - plume2, tipY * 0.6);
+      ctx.quadraticCurveTo(-L * 0.5 - plume2 * 0.45, wBase * 0.26, -L * 0.5, wBase * 0.42);
+      ctx.closePath(); ctx.fill();
+
+      // 喷口根部柔光
+      const nR = L * (0.05 + 0.06 * k);
+      const ng = ctx.createRadialGradient(-L * 0.52, 0, 0, -L * 0.52, 0, nR);
+      ng.addColorStop(0, 'rgba(255,236,200,' + (0.34 + 0.3 * k).toFixed(3) + ')');
+      ng.addColorStop(1, 'rgba(255,196,120,0)');
+      ctx.fillStyle = ng;
+      ctx.beginPath(); ctx.arc(-L * 0.52, 0, nR, 0, 6.2832); ctx.fill();
     }
 
     // 细长探针舰：尖首、后掠翼、尾喷舱
@@ -2929,24 +2981,39 @@ function initScene() {
     last = now;
     t += dt;
 
+    // 加速 / 减速：速度平滑过渡，避免开计时瞬间硬切
+    const targetSpd = cruise ? 5.2 : 1;
+    spd += (targetSpd - spd) * Math.min(1, dt * (cruise ? 1.35 : 2.6));
+    approach += ((cruise ? 1 : 0) - approach) * Math.min(1, dt * 1.1);
+
+    const amp = spd > 1.2 ? Math.min(1.0, (spd - 1.2) * 0.24) : 0;
+    const jx = Math.sin(t * 8.1) * amp;
+    const jy = Math.cos(t * 6.7) * amp * 0.8;
+
+    ctx.save();
+    ctx.translate(jx, jy);
+
     const bg = ctx.createLinearGradient(0, 0, W * 0.35, H);
     bg.addColorStop(0, '#050A11');
     bg.addColorStop(0.62, '#071420');
     bg.addColorStop(1, '#0A1A26');
     ctx.fillStyle = bg;
-    ctx.fillRect(0, 0, W, H);
+    ctx.fillRect(-10, -10, W + 20, H + 20);
 
     let neb = ctx.createRadialGradient(W * 0.72, H * 0.26, 0, W * 0.72, H * 0.26, Math.max(W, H) * 0.62);
     neb.addColorStop(0, 'rgba(38,74,96,.32)');
     neb.addColorStop(1, 'rgba(38,74,96,0)');
-    ctx.fillStyle = neb; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = neb; ctx.fillRect(-10, -10, W + 20, H + 20);
 
     neb = ctx.createRadialGradient(W * 0.08, H * 0.94, 0, W * 0.08, H * 0.94, Math.max(W, H) * 0.5);
     neb.addColorStop(0, 'rgba(104,74,36,.20)');
     neb.addColorStop(1, 'rgba(104,74,36,0)');
-    ctx.fillStyle = neb; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = neb; ctx.fillRect(-10, -10, W + 20, H + 20);
 
-    const pr = H * 0.95, pcx = W * 1.06, pcy = H * 1.34;
+    // 行星：巡航时缓慢“靠近”，半径与位置随时间推移
+    const pr = H * (0.95 + approach * 0.18);
+    const pcx = W * (1.06 - approach * 0.05);
+    const pcy = H * (1.34 + approach * 0.02);
     const pg = ctx.createRadialGradient(pcx - pr * 0.55, pcy - pr * 0.78, pr * 0.08, pcx, pcy, pr);
     pg.addColorStop(0, '#173340');
     pg.addColorStop(0.5, '#0C1B26');
@@ -2955,12 +3022,12 @@ function initScene() {
     const rim = ctx.createRadialGradient(pcx, pcy, pr * 0.90, pcx, pcy, pr);
     rim.addColorStop(0, 'rgba(196,158,104,0)');
     rim.addColorStop(0.75, 'rgba(206,166,110,.07)');
-    rim.addColorStop(1, 'rgba(255,226,186,.17)');
+    rim.addColorStop(1, 'rgba(255,226,186,' + (0.17 + approach * 0.06).toFixed(3) + ')');
     ctx.fillStyle = rim;
     ctx.beginPath(); ctx.arc(pcx, pcy, pr, 0, 6.2832); ctx.fill();
 
-    // 远月
-    const mx = W * 0.16, my = H * 0.22, mr = Math.max(3, H * 0.035);
+    // 远月（巡航时略微后退，强化纵深）
+    const mx = W * 0.16 - approach * W * 0.01, my = H * 0.22, mr = Math.max(3, H * 0.035) * (1 - approach * 0.12);
     const mg = ctx.createRadialGradient(mx - mr * 0.4, my - mr * 0.4, 0, mx, my, mr);
     mg.addColorStop(0, 'rgba(150,168,182,.55)');
     mg.addColorStop(1, 'rgba(64,80,94,.12)');
@@ -2971,17 +3038,28 @@ function initScene() {
     ctx.beginPath(); ctx.arc(pcx, pcy, pr - 1, Math.PI * 1.05, Math.PI * 1.87);
     ctx.strokeStyle = 'rgba(255,228,186,.42)'; ctx.lineWidth = 1.2; ctx.stroke();
 
-    layers.forEach(function (L, i) {
-      const sp = L.speed * (cruise ? 5.6 : 1);
+    // 近景尘埃：快速掠过的大块虚影
+    dust.forEach(function (d) {
+      d.x -= (14 + spd * 30) * dt;
+      if (d.x < -d.w * 2) { d.x = W + d.w; d.y = Math.random() * H; }
+      const rw = d.w * (0.8 + (spd - 1) * 0.28);
+      ctx.beginPath();
+      ctx.ellipse(d.x, d.y, rw, 1.6 + (spd - 1) * 0.5, 0, 0, 6.2832);
+      ctx.fillStyle = 'rgba(150,178,198,' + (d.a * Math.min(1, 0.5 + spd * 0.2)).toFixed(3) + ')';
+      ctx.fill();
+    });
+
+    layers.forEach(function (L) {
+      const sp = L.speed * spd;
       L.stars.forEach(function (st) {
         st.x -= sp * dt;
-        if (st.x < -24) { st.x = W + 14; st.y = Math.random() * H; }
-        if (cruise) {
-          const len = Math.min(96, sp * 0.17 * (0.6 + st.a));
+        if (st.x < -120) { st.x = W + 30; st.y = Math.random() * H; }
+        if (sp > 2.2) {
+          const len = Math.min(170, sp * 1.05 * (0.45 + st.a));
           ctx.beginPath();
           ctx.moveTo(st.x, st.y);
           ctx.lineTo(st.x + len, st.y);
-          ctx.strokeStyle = 'rgba(233,241,247,' + (st.a * 0.8).toFixed(3) + ')';
+          ctx.strokeStyle = 'rgba(233,241,247,' + Math.min(0.95, st.a * (0.7 + sp * 0.05)).toFixed(3) + ')';
           ctx.lineWidth = st.r; ctx.lineCap = 'round'; ctx.stroke();
         } else {
           ctx.beginPath();
@@ -2992,7 +3070,64 @@ function initScene() {
       });
     });
 
+    // 星流：以灭点为中心向外扩散的辐射线，最像“穿越”
+    if (spd > 1.25) {
+      const vx = W * 0.62, vy = H * 0.46;
+      const k = Math.min(1, (spd - 1.25) / 3.6);
+      const vg = ctx.createRadialGradient(vx, vy, 0, vx, vy, Math.max(W, H) * 0.30);
+      vg.addColorStop(0, 'rgba(198,224,240,' + (0.05 + 0.11 * k).toFixed(3) + ')');
+      vg.addColorStop(0.45, 'rgba(150,190,214,' + (0.02 + 0.05 * k).toFixed(3) + ')');
+      vg.addColorStop(1, 'rgba(120,160,190,0)');
+      ctx.fillStyle = vg;
+      ctx.beginPath(); ctx.arc(vx, vy, Math.max(W, H) * 0.30, 0, 6.2832); ctx.fill();
+      warp.forEach(function (p) {
+        p.r += dt * (0.045 + p.sp * 0.092) * (0.45 + spd * 0.55);
+        if (p.r > 1.2) { p.r = 0.03 + Math.random() * 0.05; p.a = Math.random() * 6.2832; }
+        const rr = Math.pow(p.r, 1.12) * Math.max(W, H) * 0.95;
+        const x1 = vx + Math.cos(p.a) * rr;
+        const y1 = vy + Math.sin(p.a) * rr * 0.82;
+        const len = rr * (0.045 + p.sp * 0.03) * k;
+        const x0 = vx + Math.cos(p.a) * (rr - len);
+        const y0 = vy + Math.sin(p.a) * (rr - len) * 0.82;
+        const al = Math.min(0.9, (0.2 + p.r * 0.85) * k);
+        ctx.beginPath();
+        ctx.moveTo(x0, y0); ctx.lineTo(x1, y1);
+        ctx.strokeStyle = 'rgba(233,241,247,' + al.toFixed(3) + ')';
+        ctx.lineWidth = 0.8 + p.r * 2.4;
+        ctx.lineCap = 'round';
+        ctx.stroke();
+      });
+    }
+
     drawShip(cruise);
+
+    // 喷口余烬：向后飞散并淡出
+    if (spd > 1.5) {
+      if (ember.length < 30 && Math.random() < 0.55) {
+        ember.push({
+          x: ship.x - ship.len * 0.52,
+          y: ship.y + (Math.random() - 0.5) * ship.len * 0.09,
+          vx: -(52 + spd * 26),
+          vy: (Math.random() - 0.5) * 10,
+          life: 1
+        });
+      }
+      for (let i = ember.length - 1; i >= 0; i--) {
+        const e = ember[i];
+        e.x += e.vx * dt; e.y += e.vy * dt; e.life -= dt * 1.45;
+        if (e.life <= 0) ember.splice(i, 1);
+      }
+      ember.forEach(function (e) {
+        ctx.beginPath();
+        ctx.arc(e.x, e.y, 0.7 + e.life * 1.3, 0, 6.2832);
+        ctx.fillStyle = 'rgba(255,186,110,' + (e.life * 0.5).toFixed(3) + ')';
+        ctx.fill();
+      });
+    } else {
+      ember.length = 0;
+    }
+
+    ctx.restore();
   }
 
   function loop(now) {
