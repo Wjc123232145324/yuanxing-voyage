@@ -914,6 +914,15 @@ body.fs-lg{zoom:1.08}
 body.fs-xl{zoom:1.16}
 body.theme-contrast{--dust:#BCD0DE;--dust-dim:#9AAFC0;--steel:#42607A;--steel-soft:#1D3547}
 body.theme-cb{--beacon:#58B6E0;--beacon-deep:#1D5D78;--flare:#D97AB2}
+
+.weekly-acts{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.heat-wrap{display:grid;grid-template-columns:44px repeat(4,1fr);gap:4px;padding:6px 2px 4px}
+.heat-lb{font-family:var(--font-mono);font-size:10px;color:var(--dust-dim);display:flex;align-items:center;justify-content:flex-end;padding-right:3px}
+.heat-top{font-family:var(--font-mono);font-size:9.5px;color:var(--dust-dim);text-align:center;padding-bottom:2px}
+.heat-cell{height:30px;border-radius:6px;display:flex;align-items:center;justify-content:center;
+  font-family:var(--font-mono);font-size:11px;color:var(--star);background:rgba(30,55,72,.35)}
+.heat-cell.hot{color:#0A141D;font-weight:700}
+.heat-hint{margin:8px 2px 0;font-size:11.5px;line-height:1.6;color:var(--dust)}
 </style>
 </head>
 <body>
@@ -1222,8 +1231,17 @@ body.theme-cb{--beacon:#58B6E0;--beacon-deep:#1D5D78;--flare:#D97AB2}
           <b>最近 7 天</b>
           <small>把这一周的光年、中断和最佳时段压成一张可保存的卡。</small>
         </div>
-        <button class="btn-line" id="weeklyBtn" type="button">生成本周周报</button>
+        <div class="weekly-acts">
+          <button class="btn-line" id="digestBtn" type="button">导出周记</button>
+          <button class="btn-line" id="weeklyBtn" type="button">生成本周周报</button>
+        </div>
       </div>
+
+      <section class="chart-card">
+        <div class="panel-hd"><h2>中断热力图</h2><span class="hint">越亮越容易断，按星期 × 时段</span></div>
+        <div class="heat-wrap" id="heatWrap"></div>
+        <p class="heat-hint" id="heatHint"></p>
+      </section>
 
       <div class="stats-grid">
         <div class="stat"><div class="k">总专注时长</div><div class="v" id="sumMinutes">0<em>min</em></div></div>
@@ -2983,6 +3001,91 @@ function weekCompare() {
   return { cur: calc(thisStart, thisStart + 7 * 86400000), prev: calc(prevStart, thisStart) };
 }
 
+const HEAT_SLOTS = [
+  { k: '夜', from: 0, to: 6 }, { k: '早', from: 6, to: 12 },
+  { k: '午', from: 12, to: 18 }, { k: '晚', from: 18, to: 24 }
+];
+function renderHeatmap() {
+  const wrap = $('#heatWrap'), hint = $('#heatHint');
+  if (!wrap) return;
+  const grid = {};
+  S.sessions.forEach(function (x) {
+    if (x.completed || !x.end) return;
+    const d = new Date(x.end);
+    const wd = (d.getDay() || 7) - 1;
+    const hr = d.getHours();
+    const si = HEAT_SLOTS.findIndex(function (t) { return hr >= t.from && hr < t.to; });
+    if (si < 0) return;
+    const key = wd + '-' + si;
+    grid[key] = (grid[key] || 0) + 1;
+  });
+  let max = 0, top = null;
+  Object.keys(grid).forEach(function (k) {
+    if (grid[k] > max) { max = grid[k]; top = k; }
+  });
+  const wds = ['一', '二', '三', '四', '五', '六', '日'];
+  let html = '<div class="heat-top"></div>';
+  HEAT_SLOTS.forEach(function (t) { html += '<div class="heat-top">' + t.k + '</div>'; });
+  wds.forEach(function (w, wi) {
+    html += '<div class="heat-lb">周' + w + '</div>';
+    HEAT_SLOTS.forEach(function (t, si) {
+      const n = grid[wi + '-' + si] || 0;
+      const a = max ? Math.min(0.92, 0.1 + (n / max) * 0.75) : 0;
+      const hot = max && n === max ? ' hot' : '';
+      html += '<div class="heat-cell' + hot + '" style="background:rgba(240,163,62,' + a.toFixed(2) + ');" title="周' + w + ' ' + t.k + '：中断 ' + n + ' 次">' + (n || '') + '</div>';
+    });
+  });
+  wrap.innerHTML = html;
+  if (!hint) return;
+  if (!top) { hint.textContent = '还没有中断记录。保持这个节奏。'; return; }
+  const tw = Number(top.split('-')[0]), ts = Number(top.split('-')[1]);
+  hint.textContent = '最容易断的是 周' + wds[tw] + ' ' + HEAT_SLOTS[ts].k + '间（' + HEAT_SLOTS[ts].from + '–' + HEAT_SLOTS[ts].to + ' 点），共 ' + max + ' 次。这个点可以把单段缩到 20 分钟，或在开始前先清一次通知。';
+}
+
+function exportDigest() {
+  const monday = new Date(); monday.setHours(0,0,0,0);
+  const day = monday.getDay() || 7;
+  monday.setDate(monday.getDate() - (day - 1));
+  const start = monday.getTime(), end = start + 7 * 86400000;
+  const rows = S.sessions.filter(function (x) { return x.end && x.end >= start && x.end < end; });
+  const days = {};
+  rows.forEach(function (x) {
+    const k = dayKey(x.end);
+    (days[k] = days[k] || []).push(x);
+  });
+  const done = rows.filter(function (x) { return x.completed; });
+  const totalMin = Math.round(done.reduce(function (a, x) { return a + (x.focusSec || 0); }, 0) / 60);
+  const aborts = rows.length - done.length;
+  let md = '# 远星航程 · 本周周记\n\n';
+  md += '> ' + dateCN(new Date(start)) + ' – ' + dateCN(new Date(end - 1)) + '\n\n';
+  md += '- 完成 ' + done.length + ' 段，共 ' + totalMin + ' 分钟（' + totalMin + ' ly）\n';
+  md += '- 中断 ' + aborts + ' 次\n\n';
+  Object.keys(days).sort().forEach(function (k) {
+    const parts = k.split('-').map(Number);
+    const ts = new Date(parts[0], parts[1] - 1, parts[2]);
+    md += '## ' + dateCN(ts) + ' ' + weekdayCN(ts) + '\n\n';
+    days[k].sort(function (a, b) { return a.start - b.start; }).forEach(function (x) {
+      const d = new Date(x.end);
+      md += '- ' + clockOf(x.start) + '–' + clockOf(x.end) + ' · ' + Math.round((x.focusSec || 0) / 60) + ' 分钟 · ';
+      md += (x.completed ? '抵达' : '中断（' + (x.reason || '未记原因') + '）');
+      if (x.taskTitle) md += ' · ' + x.taskTitle;
+      md += '\n';
+      if (x.note) md += '  > ' + x.note + '\n';
+    });
+    md += '\n';
+  });
+  if (!rows.length) md += '这一周还没有航段。\n';
+  md += '\n---\n由「远星航程」导出\n';
+  const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = '远星航程-周记-' + dayKey(Date.now()) + '.md';
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 800);
+  showToast('周记已导出，Markdown 可直接打开或发给老师。');
+}
+
 function renderWeekCompare() {
   const el = $('#weekCompare');
   if (!el) return;
@@ -3009,6 +3112,7 @@ function renderStats() {
   $('#sumAvg').innerHTML = (m.doneCount ? Math.round(m.doneMin / m.doneCount) : 0) + '<em>min</em>';
   $('#sumStreak').innerHTML = m.bestStreak + '<em>天</em>';
   renderWeekCompare();
+  renderHeatmap();
 
   if (!window.echarts) { showChartFallback(); return; }
 
@@ -4580,6 +4684,8 @@ function bindEvents() {
 
   const weeklyBtn = $('#weeklyBtn');
   if (weeklyBtn) weeklyBtn.addEventListener('click', showWeeklyCard);
+  const digestBtn = $('#digestBtn');
+  if (digestBtn) digestBtn.addEventListener('click', exportDigest);
   const routeGo = $('#routeGo');
   if (routeGo) routeGo.addEventListener('click', function () { setView('missions'); });
 
