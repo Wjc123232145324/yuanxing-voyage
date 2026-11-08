@@ -887,6 +887,33 @@ body.is-lowfx .deck{box-shadow:none!important}
   background:rgba(62,117,144,.12);border:1px solid rgba(62,117,144,.32);
   font-size:11.5px;color:var(--dust);line-height:1.6}
 .dur-hint b{color:var(--star);font-weight:500}
+
+/* ---------- 同航 / 显示 / 周对比 / 备忘 ---------- */
+.fleet-tag{display:inline-flex;align-items:center;gap:6px;margin-top:6px;padding:3px 9px;
+  border-radius:999px;background:rgba(62,117,144,.14);border:1px solid rgba(62,117,144,.3);
+  font-family:var(--font-mono);font-size:10.5px;color:var(--dust)}
+.fleet-tag::before{content:"";width:5px;height:5px;border-radius:50%;background:var(--beacon)}
+.display-ctrl{display:flex;flex-direction:column;gap:8px;align-items:flex-end}
+.mini-chips{display:inline-flex;gap:4px}
+.mini-chips button{padding:5px 10px;border-radius:7px;border:1px solid rgba(30,55,72,.8);
+  background:rgba(10,20,29,.6);font-size:11.5px;color:var(--dust);cursor:pointer;transition:.2s}
+.mini-chips button[aria-pressed="true"]{border-color:rgba(240,163,62,.55);color:var(--beacon);background:rgba(240,163,62,.1)}
+.week-compare{display:flex;gap:10px;padding:6px 2px 2px}
+.wc-col{flex:1;padding:12px 12px 10px;border-radius:10px;background:rgba(13,26,36,.5);border:1px solid rgba(30,55,72,.6)}
+.wc-col .lab{font-size:11px;color:var(--dust-dim);font-family:var(--font-mono);letter-spacing:.06em}
+.wc-col .val{margin-top:5px;font-family:var(--font-mono);font-size:22px;color:var(--star)}
+.wc-col .sub{margin-top:4px;font-size:11px;color:var(--dust)}
+.wc-delta{align-self:center;min-width:56px;text-align:center;font-family:var(--font-mono);font-size:13px}
+.wc-delta.up{color:var(--beacon)}.wc-delta.down{color:var(--dust)}
+.card-memo{display:flex;gap:8px;margin:10px 0 2px}
+.card-memo input{flex:1;min-width:0;padding:9px 11px;border-radius:8px;border:1px solid rgba(30,55,72,.85);
+  background:rgba(10,20,29,.7);color:var(--star);font-size:13px}
+.card-memo .btn-line{flex:none}
+.log-note{display:block;margin-top:4px;font-size:11px;color:var(--dust-dim);line-height:1.5}
+body.fs-lg{zoom:1.08}
+body.fs-xl{zoom:1.16}
+body.theme-contrast{--dust:#BCD0DE;--dust-dim:#9AAFC0;--steel:#42607A;--steel-soft:#1D3547}
+body.theme-cb{--beacon:#58B6E0;--beacon-deep:#1D5D78;--flare:#D97AB2}
 </style>
 </head>
 <body>
@@ -957,6 +984,7 @@ body.is-lowfx .deck{box-shadow:none!important}
       <div>
         <h1 class="view-title" id="viewTitle">航行台</h1>
         <p class="topbar-sub" id="viewSub">2026年11月4日 星期三</p>
+        <span class="fleet-tag" id="fleetTag" hidden></span>
       </div>
       <button class="icon-btn" id="muteBtn" aria-pressed="false" type="button">
         <svg viewBox="0 0 24 24" aria-hidden="true" id="muteIcon"><path d="M4 9v6h4l5 4V5l-5 4H4z"/><path d="M16 9c1.3 1.6 1.3 4.4 0 6"/></svg>
@@ -1184,6 +1212,11 @@ body.is-lowfx .deck{box-shadow:none!important}
 
     <!-- ========== 视图：统计 ========== -->
     <section class="view" id="view-stats" data-title="航行统计">
+      <section class="chart-card">
+        <div class="panel-hd"><h2>本周 vs 上周</h2><span class="hint">周一到周日，只算完成航段</span></div>
+        <div class="week-compare" id="weekCompare"></div>
+      </section>
+
       <div class="weekly-bar">
         <div>
           <b>最近 7 天</b>
@@ -1301,6 +1334,25 @@ body.is-lowfx .deck{box-shadow:none!important}
           <div class="dur-hint" id="durHint" hidden>
             <span id="durHintText"></span>
             <button class="mini-btn" id="durAdopt" type="button">采用</button>
+          </div>
+        </div>
+
+        <div class="set-row is-wide">
+          <div class="label">
+            <b>显示</b>
+            <small>字号放大适合躺床上看；高对比和色弱模式换掉琥珀主色。</small>
+          </div>
+          <div class="ctrl display-ctrl">
+            <div class="mini-chips" id="fontChips" role="group" aria-label="字号">
+              <button type="button" data-font="std">标准</button>
+              <button type="button" data-font="lg">大</button>
+              <button type="button" data-font="xl">特大</button>
+            </div>
+            <div class="mini-chips" id="themeChips" role="group" aria-label="配色">
+              <button type="button" data-theme="void">深空</button>
+              <button type="button" data-theme="contrast">高对比</button>
+              <button type="button" data-theme="cb">色弱</button>
+            </div>
           </div>
         </div>
 
@@ -1448,6 +1500,10 @@ body.is-lowfx .deck{box-shadow:none!important}
   <div class="card-sheet">
     <div class="card-preview"><img id="cardImg" alt="本次航程卡"></div>
     <p class="card-note" id="cardNote" hidden></p>
+    <div class="card-memo" id="cardMemoRow" hidden>
+      <input id="cardMemo" type="text" maxlength="60" placeholder="一句话记下这段：做了什么 / 卡在哪" autocomplete="off">
+      <button class="btn-line" id="cardMemoSave" type="button">记下</button>
+    </div>
     <div class="card-acts">
       <button class="btn btn-primary" id="cardSave" type="button">保存图片</button>
       <button class="btn-line" id="cardShare" type="button">分享</button>
@@ -1544,7 +1600,7 @@ const BADGES = [
 const DEFAULT_SETTINGS = {
   duration: 25, dailyGoal: 120, strict: true, sound: true,
   ambient: 'none', scene: true, volume: 35, muted: false, notify: false,
-  restDuration: 15
+  restDuration: 15, goalDate: '', fontScale: 'std', theme: 'void'
 };
 
 /* ---------- 工具 ---------- */
@@ -2201,9 +2257,14 @@ function buildVoyageCard(session, metrics, newSector) {
   return cvs;
 }
 var lastTaskNote = '';
+let lastCardSid = '';
 function showVoyageCard(session, metrics, newSector) {
   const modal = $('#cardModal');
   if (!modal) return;
+  lastCardSid = session && session.id || '';
+  const memoRow = $('#cardMemoRow'), memo = $('#cardMemo');
+  if (memoRow) memoRow.hidden = !lastCardSid;
+  if (memo) memo.value = (session && session.note) || '';
   const noteEl = $('#cardNote');
   if (noteEl) {
     noteEl.hidden = !lastTaskNote;
@@ -2701,6 +2762,7 @@ function renderLog() {
         '<div class="log-task">' + escapeHTML(s.taskTitle || '未指派任务') +
         '<span class="sub">计划 ' + Math.round(s.plannedSec / 60) + ' 分钟' + (s.completed ? ' · 抵达' : ' · 中断') + '</span>' +
         '<span class="sub-mobile">专注 ' + fmtClock(s.focusSec) + ' · ' + (s.completed ? '+' + Math.floor(s.focusSec / 60) + ' ly' : '不计里程') + '</span></div>' +
+        (s.note ? '<span class="log-note">“' + escapeHTML(s.note) + '”</span>' : '') +
         '<div class="log-dur">' + fmtClock(s.focusSec) + '</div>' +
         '<div class="log-ly">' + (s.completed ? '+' + Math.floor(s.focusSec / 60) + ' ly' : '0 ly') + '</div>' +
         '<div class="log-state' + (s.completed ? '' : ' is-abort') + '">' +
@@ -2889,6 +2951,9 @@ function showWeeklyCard() {
   if (!S.sessions.length) { showToast('还没有航段，先飞一段再来生成周报。'); return; }
   const cvs = buildWeeklyCard();
   lastCard = cvs;
+  lastCardSid = '';
+  const memoRow = $('#cardMemoRow');
+  if (memoRow) memoRow.hidden = true;
   $('#cardImg').src = cvs.toDataURL('image/png');
   const note = '本周 +' + Math.round(wk.totalMin) + ' ly · 完成 ' + wk.completed + ' 段 · 中断 ' + wk.aborts + ' 次' +
     (wk.hasHour ? ' · 最佳 ' + pad2(wk.bestHour * 2) + '–' + pad2(wk.bestHour * 2 + 2) + ' 点' : '');
@@ -2901,6 +2966,40 @@ function showWeeklyCard() {
   $('#cardModal').classList.add('is-open');
 }
 
+function weekCompare() {
+  const monday = new Date(); monday.setHours(0,0,0,0);
+  const day = monday.getDay() || 7;
+  monday.setDate(monday.getDate() - (day - 1));
+  const thisStart = monday.getTime();
+  const prevStart = thisStart - 7 * 86400000;
+  const calc = function (from, to) {
+    let min = 0, done = 0, abort = 0;
+    S.sessions.forEach(function (x) {
+      if (!x.end || x.end < from || x.end >= to) return;
+      if (x.completed) { min += (x.focusSec || 0) / 60; done += 1; } else abort += 1;
+    });
+    return { min: min, done: done, abort: abort };
+  };
+  return { cur: calc(thisStart, thisStart + 7 * 86400000), prev: calc(prevStart, thisStart) };
+}
+
+function renderWeekCompare() {
+  const el = $('#weekCompare');
+  if (!el) return;
+  const w = weekCompare();
+  const delta = w.cur.min - w.prev.min;
+  const sign = delta > 0 ? '+' : '';
+  const pct = w.prev.min ? Math.round((delta / w.prev.min) * 100) : 0;
+  const dcls = delta > 0 ? 'up' : 'down';
+  el.innerHTML =
+    '<div class="wc-col"><div class="lab">THIS WEEK</div><div class="val">' + Math.round(w.cur.min) + ' ly</div>' +
+      '<div class="sub">完成 ' + w.cur.done + ' 段 · 中断 ' + w.cur.abort + ' 次</div></div>' +
+    '<div class="wc-delta ' + dcls + '">' + sign + Math.round(delta) + ' ly' +
+      (w.prev.min ? '<br>' + sign + pct + '%' : '') + '</div>' +
+    '<div class="wc-col"><div class="lab">LAST WEEK</div><div class="val">' + Math.round(w.prev.min) + ' ly</div>' +
+      '<div class="sub">完成 ' + w.prev.done + ' 段 · 中断 ' + w.prev.abort + ' 次</div></div>';
+}
+
 function renderStats() {
   const m = computeMetrics();
   $('#sumMinutes').innerHTML = m.allMin >= 60
@@ -2909,6 +3008,7 @@ function renderStats() {
   $('#sumRate').textContent = S.sessions.length ? Math.round((m.doneCount / S.sessions.length) * 100) + '%' : '—';
   $('#sumAvg').innerHTML = (m.doneCount ? Math.round(m.doneMin / m.doneCount) : 0) + '<em>min</em>';
   $('#sumStreak').innerHTML = m.bestStreak + '<em>天</em>';
+  renderWeekCompare();
 
   if (!window.echarts) { showChartFallback(); return; }
 
@@ -3235,8 +3335,40 @@ function pullCloud(silent) {
   });
 }
 
+let fleetCh = null;
+function renderFleet(n) {
+  const tag = $('#fleetTag');
+  if (!tag) return;
+  if (!n) { tag.hidden = true; return; }
+  tag.hidden = false;
+  tag.textContent = '此刻 ' + n + ' 人在航行';
+}
+function setupPresence() {
+  if (!cloudClient || !cloudUser) { renderFleet(0); return; }
+  if (!cloudClient.channel) return;
+  try {
+    if (fleetCh) { cloudClient.removeChannel(fleetCh); fleetCh = null; }
+    fleetCh = cloudClient.channel('yuanxing-fleet', { config: { presence: { key: cloudUser.id } } });
+    fleetCh.on('presence', { event: 'sync' }, function () {
+      const st = fleetCh.presenceState();
+      let n = 0;
+      Object.keys(st).forEach(function (k) { n += (st[k] || []).length; });
+      renderFleet(n);
+    });
+    fleetCh.subscribe(function (status) {
+      if (status === 'SUBSCRIBED' && fleetCh) fleetCh.track({ at: Date.now() });
+    });
+  } catch (err) { renderFleet(0); }
+}
+function teardownPresence() {
+  if (fleetCh && cloudClient) { try { cloudClient.removeChannel(fleetCh); } catch (e) {} }
+  fleetCh = null;
+  renderFleet(0);
+}
+
 function afterSignIn() {
   if (!cloudClient || !cloudUser) return;
+  setupPresence();
   cloudClient.from(CLOUD_TABLE).select('data,updated_at').eq('user_id', cloudUser.id).maybeSingle().then(function (res) {
     if (res.error) { setCloudMsg($('#cloudSyncMsg'), '读取云端失败：' + res.error.message, 'bad'); return; }
     if (!res.data) { pushCloud(false); return; }
@@ -3573,6 +3705,7 @@ function arrivalFlash() {
 }
 
 function showToast(msg) {
+  if (S.active && S.active.running && !/[抵达紧急返航接回中断离开记录异动星区通知]/.test(msg)) return;
   const el = $('#toast');
   el.textContent = msg;
   el.classList.add('is-show');
@@ -4388,6 +4521,41 @@ function bindEvents() {
     showToast(ios ? '点 Safari 底部的分享按钮，选「添加到主屏幕」。' : '在浏览器菜单里选「安装应用」或「添加到主屏幕」。');
   });
 
+  const memoSave = $('#cardMemoSave');
+  if (memoSave) memoSave.addEventListener('click', function () {
+    const memo = $('#cardMemo');
+    if (!lastCardSid || !memo) return;
+    const text = (memo.value || '').trim().slice(0, 60);
+    const target = S.sessions.filter(function (x) { return x.id === lastCardSid; })[0];
+    if (!target) return;
+    if (text) target.note = text; else delete target.note;
+    save();
+    renderLog();
+    showToast(text ? '已记下这句话。' : '已清空这句话。');
+  });
+
+  const fontChips = $('#fontChips'), themeChips = $('#themeChips');
+  function applyDisplay() {
+    const f = S.settings.fontScale || 'std';
+    const t = S.settings.theme || 'void';
+    document.body.classList.remove('fs-lg', 'fs-xl', 'theme-contrast', 'theme-cb');
+    if (f === 'lg') document.body.classList.add('fs-lg');
+    if (f === 'xl') document.body.classList.add('fs-xl');
+    if (t === 'contrast') document.body.classList.add('theme-contrast');
+    if (t === 'cb') document.body.classList.add('theme-cb');
+    if (fontChips) $$('#fontChips button').forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.font === f ? 'true' : 'false'); });
+    if (themeChips) $$('#themeChips button').forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.theme === t ? 'true' : 'false'); });
+  }
+  if (fontChips) fontChips.addEventListener('click', function (e) {
+    const b = e.target.closest('button[data-font]'); if (!b) return;
+    S.settings.fontScale = b.dataset.font; save(); applyDisplay();
+  });
+  if (themeChips) themeChips.addEventListener('click', function (e) {
+    const b = e.target.closest('button[data-theme]'); if (!b) return;
+    S.settings.theme = b.dataset.theme; save(); applyDisplay();
+  });
+  window.__applyDisplay = applyDisplay;
+
   const holdBtn = $('#holdBtn');
   if (holdBtn) holdBtn.addEventListener('click', resumeFromHold);
 
@@ -4654,17 +4822,6 @@ function bindEvents() {
     if (e.target === $('#modal')) closeModal();
   });
 
-  document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape') {
-      const cm = $('#cardModal');
-      if (cm && cm.classList.contains('is-open')) { closeVoyageCard(); return; }
-    }
-    if (e.key === 'Escape' && $('#modal').classList.contains('is-open')) { closeModal(); return; }
-    if (e.target.closest('input, select, textarea, button, a')) return;
-    if (e.key === ' ' && currentView() === 'voyage') { e.preventDefault(); toggleStart(); }
-    if (e.key === 'Escape' && S.active) { requestAbort(); }
-  });
-
   document.addEventListener('visibilitychange', function () {
     if (document.hidden) {
       try { if (AC && AC.state === 'running' && ambientNodes) AC.suspend(); } catch (e) {}
@@ -4689,6 +4846,34 @@ function bindEvents() {
   window.addEventListener('pagehide', function () { writeDraft(); markAway(); save(); });
 
   window.addEventListener('hashchange', function () { setView(currentView()); });
+
+  document.addEventListener('keydown', function (e) {
+    const tag = (e.target && e.target.tagName || '').toLowerCase();
+    if (tag === 'input' || tag === 'textarea' || tag === 'select' || e.target.isContentEditable) return;
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    if (e.key === ' ' || e.code === 'Space') {
+      e.preventDefault();
+      const a = S.active;
+      if (a && a.hold) { resumeFromHold(); return; }
+      if (a && a.running) { pauseTimer(); return; }
+      if (a) { resumeTimer(); return; }
+      if (S.rest) { finishRest(false, '结束休整'); return; }
+      startTimer();
+      return;
+    }
+    if (e.key === 'Escape') {
+      if ($('#cardModal').classList.contains('is-open')) { closeVoyageCard(); return; }
+      if ($('#reasonModal').classList.contains('is-open')) { closeReasonPicker(); return; }
+      if ($('#modal').classList.contains('is-open')) { closeModal(); return; }
+      if (S.active || S.rest) requestAbort();
+      return;
+    }
+    if (/^[1-6]$/.test(e.key)) {
+      const views = ['voyage','missions','log','stats','badges','settings'];
+      const v = views[Number(e.key) - 1];
+      if (v) { location.hash = '#' + v; setView(v); }
+    }
+  });
 
   window.addEventListener('resize', function () {
     syncAmbientIndicator();
@@ -5536,6 +5721,7 @@ function boot() {
   if (cloudCfg) connectCloud(); else renderCloud();
 
   setupInstallRow();
+  if (window.__applyDisplay) window.__applyDisplay();
   maybeSnapshot();
   const pendingDraft = readDraft();
   if (pendingDraft) { S.active = null; save(); }   // 中断的段交给草稿弹窗处理，避免重复记账
