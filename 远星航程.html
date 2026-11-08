@@ -872,6 +872,21 @@ body.is-lowfx .scope-win img.is-on,
 body.is-lowfx.is-cruising .scope-win img.is-on{animation:none!important}
 body.is-lowfx .scope-scan{display:none}
 body.is-lowfx .deck{box-shadow:none!important}
+
+.hold-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;
+  margin-top:14px;padding:10px 12px;border-radius:10px;
+  background:rgba(240,163,62,.08);border:1px solid rgba(240,163,62,.28)}
+.hold-copy{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--star);line-height:1.5}
+.hold-copy b{color:var(--beacon);font-size:13px}
+.hold-dot{width:7px;height:7px;border-radius:50%;background:var(--beacon);flex:none;
+  animation:hold-pulse 1.6s ease-in-out infinite}
+@keyframes hold-pulse{0%,100%{opacity:.45;transform:scale(.85)}50%{opacity:1;transform:scale(1)}}
+#holdBtn{flex:none;white-space:nowrap}
+.dur-hint{display:flex;align-items:center;justify-content:space-between;gap:10px;
+  margin-top:10px;padding:9px 11px;border-radius:9px;
+  background:rgba(62,117,144,.12);border:1px solid rgba(62,117,144,.32);
+  font-size:11.5px;color:var(--dust);line-height:1.6}
+.dur-hint b{color:var(--star);font-weight:500}
 </style>
 </head>
 <body>
@@ -1026,6 +1041,13 @@ body.is-lowfx .deck{box-shadow:none!important}
                 <span>引擎低频</span>
               </button>
             </div>
+          </div>
+
+          <div class="hold-bar" id="holdBar" hidden>
+            <div class="hold-copy"><span class="hold-dot" aria-hidden="true"></span>
+              <span>已记录中断 · <b class="mono" id="holdLeft">90</b> 秒内可接回</span>
+            </div>
+            <button class="btn-line" id="holdBtn" type="button">接回航程</button>
           </div>
 
           <div class="actions">
@@ -1275,6 +1297,20 @@ body.is-lowfx .deck{box-shadow:none!important}
           <div class="range-line">
             <input type="range" id="durRange" min="5" max="90" step="5" aria-label="航程时长">
             <div class="value-tag mono" id="durValue">25 分钟</div>
+          </div>
+          <div class="dur-hint" id="durHint" hidden>
+            <span id="durHintText"></span>
+            <button class="mini-btn" id="durAdopt" type="button">采用</button>
+          </div>
+        </div>
+
+        <div class="set-row is-wide">
+          <div class="label">
+            <b>目标日期</b>
+            <small>填期末考试或项目截止日，航行台会显示还剩几天。</small>
+          </div>
+          <div class="ctrl" style="min-width:150px">
+            <input type="date" id="goalDate" aria-label="目标日期">
           </div>
         </div>
 
@@ -1780,6 +1816,77 @@ function finishRest(completed, reason) {
     : '已提前结束 · 休整 ' + fmtClock(sec) + ' 已记入日志');
 }
 
+const HOLD_MS = 90000;
+function beginHold(reason) {
+  const a = S.active;
+  if (!a) return;
+  a.baseSec = activeElapsed();
+  a.running = false;
+  a.hold = true;
+  a.holdReason = reason || '中断';
+  a.holdUntil = Date.now() + HOLD_MS;
+  save();
+  stopTicking();
+  stopAmbient(true);
+  resetAway();
+  releaseWake();
+  renderTimer();
+  renderVoyage();
+  renderHoldBar();
+  showToast('已记录「' + a.holdReason + '」，90 秒内点「接回航程」可继续这一段。');
+  beginTicking();
+}
+function resumeFromHold() {
+  const a = S.active;
+  if (!a || !a.hold) return;
+  delete a.hold; delete a.holdReason; delete a.holdUntil;
+  a.startedAt = Date.now();
+  a.running = true;
+  save();
+  renderHoldBar();
+  startAmbient();
+  acquireWake();
+  playCue('resume');
+  renderVoyage();
+  renderTimer();
+  showToast('已接回航程，计时继续。');
+}
+function commitHold() {
+  const a = S.active;
+  if (!a || !a.hold) return;
+  const reason = a.holdReason || '中断';
+  finishTimer(false, reason, { quiet: true });
+  renderHoldBar();
+  showToast('「' + reason + '」 · 这一段已按中断记入日志。');
+}
+function renderHoldBar() {
+  const bar = $('#holdBar');
+  if (!bar) return;
+  const a = S.active;
+  const on = !!(a && a.hold);
+  bar.hidden = !on;
+  if (on) {
+    const left = Math.max(0, Math.ceil((a.holdUntil - Date.now()) / 1000));
+    const el = $('#holdLeft');
+    if (el) el.textContent = String(left);
+  }
+}
+
+let wakeLock = null;
+function acquireWake() {
+  if (!('wakeLock' in navigator) || document.hidden) return;
+  if (wakeLock) return;
+  try {
+    navigator.wakeLock.request('screen').then(function (lock) {
+      wakeLock = lock;
+      lock.addEventListener('release', function () { wakeLock = null; });
+    }).catch(function () {});
+  } catch (err) {}
+}
+function releaseWake() {
+  if (wakeLock) { try { wakeLock.release(); } catch (err) {} wakeLock = null; }
+}
+
 function startTimer() {
   const planned = S.settings.duration * 60;
   S.active = {
@@ -1797,6 +1904,7 @@ function startTimer() {
   resetAway();
   beginTicking();
   startAmbient();
+  acquireWake();
   playCue('start');
   renderVoyage();
   renderTimer();
@@ -1810,6 +1918,7 @@ function pauseTimer() {
   a.pauseStart = Date.now();
   save();
   stopAmbient(true);
+  releaseWake();
   playCue('pause');
   renderVoyage();
   renderTimer();
@@ -1823,11 +1932,13 @@ function resumeTimer() {
   a.running = true;
   save();
   startAmbient();
+  acquireWake();
   playCue('resume');
   renderVoyage();
   renderTimer();
 }
-function finishTimer(completed, reason) {
+function finishTimer(completed, reason, opts) {
+  const quiet = !!(opts && opts.quiet);
   const a = S.active;
   if (!a) return;
   const beforeIdx = computeMetrics().sectorIdx;
@@ -1868,6 +1979,7 @@ function finishTimer(completed, reason) {
   save();
   stopTicking();
   stopAmbient(false);
+  releaseWake();
   const m = computeMetrics();
   renderAll();
   if (completed) {
@@ -1883,7 +1995,7 @@ function finishTimer(completed, reason) {
         showToast('抵达 · 本段 +' + Math.round(focusSec / 60) + ' ly · ' + sector.name);
       }
     }, 560);
-  } else {
+  } else if (!quiet) {
     playCue('abort');
     notifySystem('紧急返航', (reason || '离开驾驶位') + ' · 专注 ' + fmtClock(focusSec));
     showToast((reason ? reason : '紧急返航') + ' · 本段不计里程，专注 ' + fmtClock(focusSec) + ' 已记入日志');
@@ -2180,6 +2292,12 @@ function tick() {
     if (!r) { stopTicking(); return; }
     if ((Date.now() - r.startedAt) / 1000 >= r.plannedSec) { finishRest(true, ''); return; }
     renderTimer();
+    return;
+  }
+  if (a.hold) {
+    if (Date.now() >= a.holdUntil) { commitHold(); return; }
+    renderTimer();
+    renderHoldBar();
     return;
   }
   if (a.running) {
@@ -3190,6 +3308,22 @@ function renderCloud() {
   }
 }
 
+function durationAdvice() {
+  const recent = S.sessions.slice(-10);
+  if (recent.length < 6) return null;
+  const done = recent.filter(function (x) { return x.completed; }).length;
+  const rate = done / recent.length;
+  const cur = S.settings.duration;
+  if (rate < 0.6) {
+    const next = Math.max(10, Math.min(cur - 5, cur * 0.8));
+    return { next: Math.round(next), text: '近 ' + recent.length + ' 段完成率 ' + Math.round(rate * 100) + '%，偏紧。建议降到 <b>' + Math.round(next) + '</b> 分钟，先把「能完成」找回来。' };
+  }
+  if (rate > 0.85 && cur < 45) {
+    return { next: Math.min(45, cur + 5), text: '近 ' + recent.length + ' 段完成率 ' + Math.round(rate * 100) + '%，很稳。可以试着加到 <b>' + Math.min(45, cur + 5) + '</b> 分钟。' };
+  }
+  return null;
+}
+
 function renderSettings() {
   const st = S.settings;
   $('#durRange').value = st.duration;
@@ -3198,6 +3332,17 @@ function renderSettings() {
   $('#goalValue').textContent = st.dailyGoal + ' 分钟';
   $('#volRange').value = st.volume;
   $('#volValue').textContent = st.volume + '%';
+  const goalDateEl = $('#goalDate');
+  if (goalDateEl) goalDateEl.value = st.goalDate || '';
+  const hint = $('#durHint'), hintText = $('#durHintText'), adopt = $('#durAdopt');
+  if (hint && hintText) {
+    const advice = durationAdvice();
+    hint.hidden = !advice;
+    if (advice) {
+      hintText.innerHTML = advice.text;
+      if (adopt) adopt.dataset.dur = String(Math.max(10, Math.min(90, advice.next)));
+    }
+  }
   $('#strictSwitch').setAttribute('aria-checked', st.strict ? 'true' : 'false');
   const nsw = $('#notifySwitch');
   if (nsw) nsw.setAttribute('aria-checked', st.notify ? 'true' : 'false');
@@ -3232,7 +3377,12 @@ function renderMeta() {
   const openMissions = S.missions.filter(function (x) { return !x.done; }).length;
   const unlocked = BADGES.filter(function (b) { return b.get(m) >= b.target; }).length;
   const subs = {
-    voyage: dateCN(Date.now()) + ' ' + weekdayCN(Date.now()) + ' · 连续航行 ' + m.streak + ' 天',
+    voyage: dateCN(Date.now()) + ' ' + weekdayCN(Date.now()) + ' · 连续航行 ' + m.streak + ' 天' +
+      (function () {
+        if (!S.settings.goalDate) return '';
+        const left = Math.ceil((new Date(S.settings.goalDate + 'T23:59:59').getTime() - Date.now()) / 86400000);
+        return left >= 0 ? ' · 距目标 ' + left + ' 天' : ' · 目标日已过';
+      })(),
     missions: openMissions + ' 项待办 · ' + m.missionsDone + ' 项已完成',
     log: '共 ' + S.sessions.length + ' 段 · 完成 ' + m.doneCount + ' 段',
     stats: '累计 ' + m.totalLy + ' 光年 · 当前 ' + SECTORS[m.sectorIdx].name,
@@ -4214,7 +4364,7 @@ function bindEvents() {
       if (!chip) return;
       const reason = chip.dataset.reason || '其他';
       closeReasonPicker();
-      finishTimer(false, reason);
+      beginHold(reason);
     });
     const skip = $('#reasonSkip');
     if (skip) skip.addEventListener('click', function () {
@@ -4236,6 +4386,28 @@ function bindEvents() {
     }
     const ios = /iPhone|iPad|iPod/i.test(navigator.userAgent);
     showToast(ios ? '点 Safari 底部的分享按钮，选「添加到主屏幕」。' : '在浏览器菜单里选「安装应用」或「添加到主屏幕」。');
+  });
+
+  const holdBtn = $('#holdBtn');
+  if (holdBtn) holdBtn.addEventListener('click', resumeFromHold);
+
+  const durAdopt = $('#durAdopt');
+  if (durAdopt) durAdopt.addEventListener('click', function () {
+    const next = Number(this.dataset.dur);
+    if (!next) return;
+    S.settings.duration = next;
+    save();
+    renderSettings();
+    renderVoyage();
+    showToast('单段时长已改为 ' + next + ' 分钟。');
+  });
+
+  const goalDate = $('#goalDate');
+  if (goalDate) goalDate.addEventListener('change', function () {
+    S.settings.goalDate = this.value || '';
+    save();
+    renderVoyage();
+    showToast(S.settings.goalDate ? '目标日期已设定。' : '已清除目标日期。');
   });
 
   const weeklyBtn = $('#weeklyBtn');
@@ -5367,7 +5539,9 @@ function boot() {
   maybeSnapshot();
   const pendingDraft = readDraft();
   if (pendingDraft) { S.active = null; save(); }   // 中断的段交给草稿弹窗处理，避免重复记账
-  if (S.active && S.active.running) {
+  if (S.active && S.active.hold) {
+    finishTimer(false, S.active.holdReason || '中断', { quiet: true });
+  } else if (S.active && S.active.running) {
     // 页面被关闭或整页重载，等同于离开驾驶位
     finishTimer(false, '页面关闭');
   } else if (S.active) {
