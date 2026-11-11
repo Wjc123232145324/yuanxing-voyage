@@ -1,0 +1,23 @@
+name: sync-app
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+permissions:
+  contents: write
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch app
+        run: |
+          curl -sSL --http1.1 --max-time 300 "https://aka.doubaocdn.com/s/tEuVEhp2Wh" -o "远星航程.html"
+          ls -l "远星航程.html"
+      - name: Commit
+        run: |
+          git config user.name "sync-bot"
+          git config user.email "sync-bot@users.noreply.github.com"
+          git add "远星航程.html"
+          git diff --cached --quiet || git commit -m "sync: 远星航程 v28 自动合并"
+          git push
