@@ -893,6 +893,21 @@ body.is-lowfx .deck{box-shadow:none!important}
   border-radius:999px;background:rgba(62,117,144,.14);border:1px solid rgba(62,117,144,.3);
   font-family:var(--font-mono);font-size:10.5px;color:var(--dust)}
 .fleet-tag::before{content:"";width:5px;height:5px;border-radius:50%;background:var(--beacon)}
+.sync-chip{display:inline-flex;align-items:center;gap:6px;margin:6px 0 0 6px;padding:3px 9px;
+  border-radius:999px;background:rgba(131,153,172,.09);border:1px solid rgba(131,153,172,.16);
+  font-family:var(--font-mono);font-size:10.5px;color:var(--dust);letter-spacing:.02em;
+  transition:color .25s,border-color .25s,background .25s}
+.sync-chip[hidden]{display:none}
+.sync-chip .sync-dot{width:5px;height:5px;border-radius:50%;background:var(--dust-dim);flex:none;
+  transition:background .25s,box-shadow .25s}
+.sync-chip[data-state="syncing"]{color:var(--beacon);border-color:rgba(240,163,62,.28);background:rgba(240,163,62,.08)}
+.sync-chip[data-state="syncing"] .sync-dot{background:var(--beacon);animation:live-blink 1.1s infinite}
+.sync-chip[data-state="ok"]{color:#8FD6B0;border-color:rgba(143,214,176,.22);background:rgba(143,214,176,.06)}
+.sync-chip[data-state="ok"] .sync-dot{background:#8FD6B0;box-shadow:0 0 0 3px rgba(143,214,176,.08)}
+.sync-chip[data-state="wait"]{color:var(--dust);border-color:rgba(240,163,62,.2)}
+.sync-chip[data-state="wait"] .sync-dot{background:var(--beacon);opacity:.6}
+.sync-chip[data-state="fail"]{color:var(--flare);border-color:rgba(217,91,68,.25);background:rgba(217,91,68,.06)}
+.sync-chip[data-state="fail"] .sync-dot{background:var(--flare)}
 .display-ctrl{display:flex;flex-direction:column;gap:8px;align-items:flex-end}
 .mini-chips{display:inline-flex;gap:4px}
 .mini-chips button{padding:5px 10px;border-radius:7px;border:1px solid rgba(30,55,72,.8);
@@ -1047,6 +1062,7 @@ body.theme-cb{--beacon:#58B6E0;--beacon-deep:#1D5D78;--flare:#D97AB2}
         <h1 class="view-title" id="viewTitle">航行台</h1>
         <p class="topbar-sub" id="viewSub">2026年11月4日 星期三</p>
         <span class="fleet-tag" id="fleetTag" hidden></span>
+        <span class="sync-chip" id="syncChip" data-state="idle" hidden><span class="sync-dot"></span><span id="syncChipText">已同步</span></span>
       </div>
       <button class="icon-btn" id="muteBtn" aria-pressed="false" type="button">
         <svg viewBox="0 0 24 24" aria-hidden="true" id="muteIcon"><path d="M4 9v6h4l5 4V5l-5 4H4z"/><path d="M16 9c1.3 1.6 1.3 4.4 0 6"/></svg>
@@ -2018,6 +2034,7 @@ function finishRest(completed, reason) {
   stopTicking();
   stopAmbient(false);
   renderAll();
+  if (typeof flushPendingCloudSync === 'function') setTimeout(flushPendingCloudSync, 600);
   playCue(completed ? 'arrive' : 'abort');
   showToast(completed
     ? '休整结束 · ' + Math.round(sec / 60) + ' 分钟，回到航线吧'
@@ -2193,6 +2210,7 @@ function finishTimer(completed, reason, opts) {
   releaseWake();
   const m = computeMetrics();
   renderAll();
+  if (typeof flushPendingCloudSync === 'function') setTimeout(flushPendingCloudSync, 600);
   if (typeof checkShipUpgrade === 'function') checkShipUpgrade();
   if (completed) {
     playCue('arrive');
@@ -3691,6 +3709,8 @@ let cloudSyncAt = 0;
 let cloudAccountName = '';
 let cloudIsTest = false;
 let cloudAfterSignInAt = 0;
+let cloudMergePending = false;
+let syncStatus = { state: 'idle', text: '已同步' };
 function isTestAccount() { return cloudIsTest || !!(cloudUser && cloudUser.id === TEST_ACCOUNT_ID); }
 let cloudAuthBusy = false;
 let cloudAuthPending = null;
@@ -3724,6 +3744,25 @@ function setCloudMsg(el, text, kind) {
 function nowLabel() {
   const d = new Date();
   return pad2(d.getHours()) + ':' + pad2(d.getMinutes());
+}
+
+function renderSyncChip() {
+  const chip = $('#syncChip'), text = $('#syncChipText');
+  if (!chip) return;
+  if (!cloudUser) { chip.hidden = true; return; }
+  chip.hidden = false;
+  chip.setAttribute('data-state', syncStatus.state || 'idle');
+  if (text) text.textContent = (syncStatus.text || '已同步') + (isTestAccount() ? ' · 不上榜' : '');
+}
+
+function setSyncStatus(state, text, detail, kind) {
+  syncStatus = { state: state || 'idle', text: text || '' };
+  renderSyncChip();
+  if (typeof detail === 'string') setCloudMsg($('#cloudSyncMsg'), detail, kind || '');
+}
+
+function cancelCloudPush() {
+  if (cloudPushTimer) { clearTimeout(cloudPushTimer); cloudPushTimer = null; }
 }
 
 function loadCloudSdk(cb) {
@@ -3804,12 +3843,14 @@ function adoptCloudData(data, updatedAt) {
   return true;
 }
 
-function pushCloud(quiet) {
-  if (!cloudClient || !cloudUser) return;
+function pushCloud(quiet, doneText, busyText) {
+  if (!cloudClient || !cloudUser) return Promise.resolve(false);
+  cancelCloudPush();
   const btn = $('#cloudPushBtn');
   if (btn) btn.disabled = true;
-  setCloudMsg($('#cloudSyncMsg'), '正在上传…');
-  cloudClient.from(CLOUD_TABLE).upsert({
+  const busy = busyText || (quiet ? '自动同步中' : '正在上传');
+  setSyncStatus('syncing', busy, busyText ? undefined : '正在上传…');
+  return cloudClient.from(CLOUD_TABLE).upsert({
     user_id: cloudUser.id,
     data: cloudPayload(),
     updated_at: new Date().toISOString()
@@ -3817,29 +3858,40 @@ function pushCloud(quiet) {
     if (btn) btn.disabled = false;
     if (res.error) {
       const e1 = /Failed to fetch|NetworkError/i.test(res.error.message) ? '连不上项目' : res.error.message;
-      setCloudMsg($('#cloudSyncMsg'), '上传失败：' + e1, 'bad');
-      return;
+      setSyncStatus('fail', '同步失败', '上传失败：' + e1, 'bad');
+      return false;
     }
     cloudSyncAt = Date.now();
-    setCloudMsg($('#cloudSyncMsg'), (quiet ? '已自动同步 ' : '已上传 ') + nowLabel(), 'ok');
+    const okText = doneText || ((quiet ? '已自动同步 ' : '已上传 ') + nowLabel());
+    setSyncStatus('ok', '已同步 ' + nowLabel(), okText, 'ok');
+    return true;
+  }).catch(function (err) {
+    if (btn) btn.disabled = false;
+    const e1 = /Failed to fetch|NetworkError/i.test((err && err.message) || '') ? '连不上项目' : ((err && err.message) || '网络异常');
+    setSyncStatus('fail', '同步失败', '上传失败：' + e1, 'bad');
+    return false;
   });
 }
 
 function pullCloud(silent) {
   if (!cloudClient || !cloudUser) return;
-  setCloudMsg($('#cloudSyncMsg'), '正在读取云端…');
+  setSyncStatus('syncing', '正在读取云端', '正在读取云端…');
   cloudClient.from(CLOUD_TABLE).select('data,updated_at').eq('user_id', cloudUser.id).maybeSingle().then(function (res) {
     if (res.error) {
       const e2 = /Failed to fetch|NetworkError/i.test(res.error.message) ? '连不上项目' : res.error.message;
-      setCloudMsg($('#cloudSyncMsg'), '读取失败：' + e2, 'bad');
+      setSyncStatus('fail', '同步失败', '读取失败：' + e2, 'bad');
       return;
     }
     if (!res.data) {
-      setCloudMsg($('#cloudSyncMsg'), '云端还没有记录，先上传本地', '');
+      setSyncStatus('ok', '云端为空', '云端还没有记录，先上传本地', '');
       return;
     }
     const ok = adoptCloudData(res.data.data, res.data.updated_at);
-    if (ok) setCloudMsg($('#cloudSyncMsg'), '已从云端恢复 ' + S.sessions.length + ' 段航程', 'ok');
+    if (ok) {
+      setSyncStatus('ok', '已同步 ' + nowLabel(), '已从云端恢复 ' + S.sessions.length + ' 段航程', 'ok');
+    } else {
+      setSyncStatus('wait', '未同步', '正在计时或休整，先结束再同步', 'bad');
+    }
   });
 }
 
@@ -3927,33 +3979,166 @@ function teardownPresence() {
   renderFleet(0);
 }
 
+function syncNum(v) { const n = Number(v); return isFinite(n) ? n : 0; }
+
+function mergeSession(local, remote) {
+  const base = Object.assign({}, remote, local);
+  base.focusSec = Math.max(syncNum(local.focusSec), syncNum(remote.focusSec));
+  base.plannedSec = Math.max(syncNum(local.plannedSec), syncNum(remote.plannedSec));
+  base.completed = !!(local.completed || remote.completed);
+  base.salvaged = !!(local.salvaged || remote.salvaged);
+  base.taskTitle = local.taskTitle || remote.taskTitle || '未指派任务';
+  base.tag = local.tag || remote.tag || '综合';
+  base.note = local.note || remote.note || '';
+  base.reason = local.reason || remote.reason || '';
+  const starts = [syncNum(local.start), syncNum(remote.start)].filter(function (t) { return t > 0; });
+  const ends = [syncNum(local.end), syncNum(remote.end)].filter(function (t) { return t > 0; });
+  if (starts.length) base.start = Math.min.apply(null, starts);
+  if (ends.length) base.end = Math.max.apply(null, ends);
+  return base;
+}
+
+function mergeMission(local, remote) {
+  const base = Object.assign({}, remote, local);
+  base.done = !!(local.done || remote.done);
+  base.est = Math.max(1, syncNum(local.est) || 1, syncNum(remote.est) || 1);
+  base.title = local.title || remote.title || '未命名任务';
+  base.tag = local.tag || remote.tag || '综合';
+  const times = [syncNum(local.createdAt), syncNum(remote.createdAt)].filter(function (t) { return t > 0; });
+  if (times.length) base.createdAt = Math.min.apply(null, times);
+  return base;
+}
+
+function mergeRest(local, remote) {
+  const base = Object.assign({}, remote, local);
+  base.restSec = Math.max(syncNum(local.restSec), syncNum(remote.restSec));
+  base.plannedSec = Math.max(syncNum(local.plannedSec), syncNum(remote.plannedSec));
+  base.completed = !!(local.completed || remote.completed);
+  base.reason = local.reason || remote.reason || '';
+  const starts = [syncNum(local.start), syncNum(remote.start)].filter(function (t) { return t > 0; });
+  if (starts.length) base.start = Math.min.apply(null, starts);
+  return base;
+}
+
+function mergeVoyageData(remoteData) {
+  const remote = migrateState(remoteData || {});
+  const local = S;
+  const sessions = {};
+  remote.sessions.forEach(function (x) {
+    const key = x.id || ('s' + syncNum(x.start) + '|' + syncNum(x.end));
+    sessions[key] = x;
+  });
+  local.sessions.forEach(function (x) {
+    const key = x.id || ('s' + syncNum(x.start) + '|' + syncNum(x.end));
+    sessions[key] = sessions[key] ? mergeSession(x, sessions[key]) : x;
+  });
+  const missions = {};
+  remote.missions.forEach(function (x) { missions[x.id || x.title] = x; });
+  local.missions.forEach(function (x) {
+    const key = x.id || x.title;
+    missions[key] = missions[key] ? mergeMission(x, missions[key]) : x;
+  });
+  const rests = {};
+  remote.rests.forEach(function (x) {
+    const key = x.id || ('r' + Math.round(syncNum(x.start) / 60000) + '|' + syncNum(x.restSec));
+    rests[key] = x;
+  });
+  local.rests.forEach(function (x) {
+    const key = x.id || ('r' + Math.round(syncNum(x.start) / 60000) + '|' + syncNum(x.restSec));
+    rests[key] = rests[key] ? mergeRest(x, rests[key]) : x;
+  });
+
+  const sessionList = Object.keys(sessions).map(function (k) { return sessions[k]; })
+    .sort(function (a, b) { return syncNum(a.start) - syncNum(b.start); });
+  const missionList = Object.keys(missions).map(function (k) { return missions[k]; });
+  const restList = Object.keys(rests).map(function (k) { return rests[k]; })
+    .sort(function (a, b) { return syncNum(a.start) - syncNum(b.start); }).slice(-400);
+
+  const ls = local.settings || {}, rs = remote.settings || {};
+  const settings = Object.assign({}, DEFAULT_SETTINGS, rs, ls);
+  ['fleetCode', 'fleetNick', 'goalDate'].forEach(function (k) {
+    if (!ls[k] && rs[k]) settings[k] = rs[k];
+  });
+  const frames = Array.from(new Set((local.frames || []).concat(remote.frames || [])));
+  let currentTaskId = null;
+  if (local.currentTaskId && missionList.some(function (m) { return m.id === local.currentTaskId; })) currentTaskId = local.currentTaskId;
+  else if (remote.currentTaskId && missionList.some(function (m) { return m.id === remote.currentTaskId; })) currentTaskId = remote.currentTaskId;
+
+  return {
+    v: DATA_VERSION, settings: settings, missions: missionList, sessions: sessionList,
+    currentTaskId: currentTaskId, active: null, mode: 'voyage', rest: null, rests: restList,
+    stars: Math.max(syncNum(local.stars), syncNum(remote.stars)),
+    frames: frames.length ? frames : ['thin'],
+    frame: local.frame || remote.frame || 'thin',
+    shipSeen: Math.max(syncNum(local.shipSeen) || 1, syncNum(remote.shipSeen) || 1)
+  };
+}
+
+function flushPendingCloudSync() {
+  if (!cloudMergePending || !cloudClient || !cloudUser) return;
+  cloudMergePending = false;
+  cloudAfterSignInAt = 0;
+  afterSignIn();
+}
+
 function afterSignIn() {
   if (!cloudClient || !cloudUser) return;
   const now = Date.now();
   if (now - cloudAfterSignInAt < 1500) return;
   cloudAfterSignInAt = now;
+  setSyncStatus('syncing', '正在同步', '正在读取云端…');
   ensureCloudProfile(cloudUser).then(function (name) {
     if (name && name !== cloudAccountName) { cloudAccountName = name; renderCloud(); }
     if (isTestAccount()) { teardownPresence(); renderFleet(0); }
     else setupPresence();
   });
   cloudClient.from(CLOUD_TABLE).select('data,updated_at').eq('user_id', cloudUser.id).maybeSingle().then(function (res) {
-    if (res.error) { setCloudMsg($('#cloudSyncMsg'), '读取云端失败：' + res.error.message, 'bad'); return; }
-    if (!res.data) { pushCloud(false); return; }
-    const remote = (res.data.data && res.data.data.sessions) || [];
-    if (!S.sessions.length && remote.length) {
-      if (adoptCloudData(res.data.data, res.data.updated_at)) {
-        setCloudMsg($('#cloudSyncMsg'), '已从云端恢复 ' + remote.length + ' 段航程', 'ok');
-      }
-    } else if (!remote.length && S.sessions.length) {
-      pushCloud(false);
-    } else if (remote.length && S.sessions.length) {
-      cloudSyncAt = Date.parse(res.data.updated_at) || 0;
-      setCloudMsg($('#cloudSyncMsg'), '云端 ' + remote.length + ' 段 · 本地 ' + S.sessions.length +
-        ' 段，选「上传本地」或「从云端恢复」', '');
-    } else {
-      setCloudMsg($('#cloudSyncMsg'), '两端都还没有航段', '');
+    if (res.error) {
+      const e1 = /Failed to fetch|NetworkError/i.test(res.error.message) ? '连不上项目' : res.error.message;
+      setSyncStatus('fail', '同步失败', '读取云端失败：' + e1, 'bad');
+      return;
     }
+    const remoteData = res.data && res.data.data;
+    const remoteN = (remoteData && remoteData.sessions) ? remoteData.sessions.length : 0;
+    const remoteAny = !!(remoteData && (remoteN || (remoteData.missions && remoteData.missions.length) || (remoteData.rests && remoteData.rests.length)));
+
+    if (!remoteAny) {
+      if (S.sessions.length || S.missions.length) {
+        pushCloud(true, '已上传本地 ' + S.sessions.length + ' 段');
+      } else {
+        setSyncStatus('ok', '已同步', '云端和本地都还没有航段', '');
+      }
+      return;
+    }
+
+    if (S.active || S.rest) {
+      cloudMergePending = true;
+      setSyncStatus('wait', '结束后合并', '正在计时或休整，结束后自动合并', '');
+      return;
+    }
+
+    const localAny = !!(S.sessions.length || S.missions.length || S.rests.length);
+    if (!localAny) {
+      if (adoptCloudData(remoteData, res.data.updated_at)) {
+        cancelCloudPush();
+        setSyncStatus('ok', '已同步 ' + nowLabel(), '已从云端恢复 ' + remoteN + ' 段航程', 'ok');
+      } else {
+        setSyncStatus('fail', '同步失败', '云端数据读不出来', 'bad');
+      }
+      return;
+    }
+
+    const localN = S.sessions.length;
+    const merged = mergeVoyageData(remoteData);
+    S = migrateState(merged);
+    S.active = null;
+    S.rest = null;
+    if (S.mode === 'rest') S.mode = 'voyage';
+    save();
+    renderAll();
+    cloudSyncAt = Date.parse(res.data.updated_at) || Date.now();
+    setSyncStatus('syncing', '正在合并', '正在合并本地 ' + localN + ' 段 · 云端 ' + remoteN + ' 段…');
+    pushCloud(true, '已合并并同步 · ' + S.sessions.length + ' 段', '正在合并');
   });
 }
 
@@ -4130,6 +4315,7 @@ function renderCloud() {
       ? '云端账号 ' + (cloudAccountName || cloudUser.email || '')
       : (cloudCfg ? '未登录云端 · 数据存在本机' : '数据仅保存在这台设备的浏览器里');
   }
+  renderSyncChip();
 }
 
 function durationAdvice() {
@@ -5090,6 +5276,9 @@ function bindEvents() {
       cloudUser = null;
       cloudAccountName = '';
       cloudIsTest = false;
+      cloudMergePending = false;
+      syncStatus = { state: 'idle', text: '' };
+      cancelCloudPush();
       renderCloud();
       showToast('已退出登录，本地数据保留');
     });
