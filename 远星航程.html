@@ -951,6 +951,31 @@ body.theme-cb{--beacon:#58B6E0;--beacon-deep:#1D5D78;--flare:#D97AB2}
   border:1px solid rgba(240,163,62,.35);background:rgba(240,163,62,.08);color:var(--beacon);
   font-size:11px;line-height:1.4;white-space:nowrap;cursor:pointer}
 .log-salvage.is-done{opacity:.55;border-color:rgba(131,153,172,.35);color:var(--dust-dim);cursor:default}
+
+.ship-badge{position:absolute;left:14px;top:44px;z-index:3;padding:3px 9px;border-radius:999px;
+  border:1px solid rgba(240,163,62,.28);background:rgba(5,10,17,.55);color:var(--beacon);
+  font-family:var(--font-mono);font-size:10.5px;letter-spacing:.04em;backdrop-filter:blur(6px)}
+.ship-badge.is-high{border-color:rgba(240,163,62,.55);box-shadow:0 0 14px rgba(240,163,62,.18)}
+.ship-panel{padding-bottom:14px}
+.ship-now{padding:6px 4px 2px}
+.ship-name{font-family:var(--font-serif);font-size:19px;color:var(--star);letter-spacing:.04em}
+.ship-name .mono{font-family:var(--font-mono);font-size:11px;color:var(--beacon);vertical-align:2px}
+.ship-sub{margin-top:4px;font-size:11.5px;color:var(--dust)}
+.ship-bar{height:4px;margin:10px 4px 12px;border-radius:99px;background:rgba(30,55,72,.8);overflow:hidden}
+.ship-bar i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#8A5A1C,#F0A33E);
+  box-shadow:0 0 10px rgba(240,163,62,.4);transition:width .4s cubic-bezier(.22,1,.36,1)}
+.ship-tiers{display:flex;gap:6px;padding:0 2px;overflow-x:auto;scrollbar-width:none}
+.ship-tiers::-webkit-scrollbar{display:none}
+.ship-tier{flex:none;padding:6px 9px;border-radius:8px;border:1px solid rgba(30,55,72,.7);
+  color:var(--dust-dim);font-size:10.5px;white-space:nowrap}
+.ship-tier.is-on{color:var(--beacon);border-color:rgba(240,163,62,.4);background:rgba(240,163,62,.07)}
+.ship-tier.is-now{color:var(--void);background:var(--beacon);border-color:var(--beacon);font-weight:600}
+.fleet-rank{flex:none;width:22px;font-family:var(--font-mono);font-size:11px;color:var(--dust-dim)}
+.fleet-badges{font-family:var(--font-mono);font-size:10.5px;color:var(--beacon);margin-left:6px}
+.fleet-ship{font-size:10.5px;color:var(--dust-dim);margin-left:6px}
+
+.fleet-main{flex:1;min-width:0}
+.fleet-sub{display:flex;gap:6px;margin-top:2px}
 </style>
 </head>
 <body>
@@ -1082,6 +1107,7 @@ body.theme-cb{--beacon:#58B6E0;--beacon-deep:#1D5D78;--flare:#D97AB2}
                 <div class="dial-plan" id="dialPlan">计划航段 25 分钟</div>
               </div>
             </div>
+            <div class="ship-badge" id="shipTag">探针舰 · Lv.1</div>
           </div>
 
           <div class="daily-row">
@@ -1308,6 +1334,19 @@ body.theme-cb{--beacon:#58B6E0;--beacon-deep:#1D5D78;--flare:#D97AB2}
 
     <!-- ========== 视图：成就 ========== -->
     <section class="view" id="view-badges" data-title="航行成就">
+      <section class="panel ship-panel">
+        <div class="panel-hd">
+          <h2>舰体升级</h2>
+          <span class="hint" id="shipNext">再飞 120 分钟升级</span>
+        </div>
+        <div class="ship-now">
+          <div class="ship-name" id="shipName">探针舰 <span class="mono">Lv.1</span></div>
+          <div class="ship-sub" id="shipSub">尖首探针，单引擎，能飞就行。</div>
+        </div>
+        <div class="ship-bar"><i id="shipBar" style="width:0%"></i></div>
+        <div class="ship-tiers" id="shipTiers"></div>
+      </section>
+
       <section class="panel star-panel">
         <div class="panel-hd">
           <h2>我的航迹星图</h2>
@@ -1323,7 +1362,7 @@ body.theme-cb{--beacon:#58B6E0;--beacon-deep:#1D5D78;--flare:#D97AB2}
       </section>
 
       <section class="panel" id="fleetPanel" hidden>
-        <div class="panel-hd"><h2>同航编队</h2><span class="hint" id="fleetMeta">登录后可加入</span></div>
+        <div class="panel-hd"><h2>同航排行榜</h2><span class="hint" id="fleetMeta">登录后可加入</span></div>
         <div class="fleet-list" id="fleetList"></div>
       </section>
 
@@ -1754,7 +1793,8 @@ function defaultState() {
     rests: [],
     stars: 0,
     frames: ['thin'],
-    frame: 'thin'
+    frame: 'thin',
+    shipSeen: 1
   };
 }
 function migrateState(parsed) {
@@ -1768,6 +1808,7 @@ function migrateState(parsed) {
   base.settings.restDuration = clamp(Number(base.settings.restDuration) || 15, 5, 45);
 
   base.currentTaskId = parsed.currentTaskId || null;
+  base.shipSeen = Math.max(1, Number(parsed.shipSeen) || 1);
   base.mode = parsed.mode === 'rest' ? 'rest' : 'voyage';
   base.rest = parsed.rest && typeof parsed.rest === 'object' ? parsed.rest : null;
   base.active = parsed.active && typeof parsed.active === 'object' ? parsed.active : null;
@@ -1784,13 +1825,15 @@ function migrateState(parsed) {
       id: s.id || 'legacy-' + i,
       taskId: s.taskId || null,
       taskTitle: typeof s.taskTitle === 'string' && s.taskTitle.trim() ? s.taskTitle : '未指派任务',
-      tag: typeof s.tag === 'string' && STAR_KINDS[s.tag] ? s.tag : '',
+      tag: (typeof s.tag === 'string' && ['综合','数学','语文','英语','物理','化学','生物'].indexOf(s.tag) >= 0) ? s.tag : '',
       plannedSec: cleanSec(s.plannedSec),
       focusSec: cleanSec(s.focusSec),
       start: Number(s.start) || Number(s.end) || Date.now(),
       end: Number(s.end) || Date.now(),
       completed: !!s.completed,
-      reason: typeof s.reason === 'string' ? s.reason : ''
+      reason: typeof s.reason === 'string' ? s.reason : '',
+      note: typeof s.note === 'string' ? s.note : '',
+      salvaged: !!s.salvaged
     };
   });
   base.rests = (Array.isArray(parsed.rests) ? parsed.rests : []).filter(function (r) {
@@ -2148,6 +2191,7 @@ function finishTimer(completed, reason, opts) {
   releaseWake();
   const m = computeMetrics();
   renderAll();
+  if (typeof checkShipUpgrade === 'function') checkShipUpgrade();
   if (completed) {
     playCue('arrive');
     const sector = SECTORS[m.sectorIdx];
@@ -2579,6 +2623,60 @@ function inferTag(title) {
 function starKind(session) {
   const tag = session.tag || inferTag(session.taskTitle);
   return STAR_KINDS[tag] || STAR_KINDS['综合'];
+}
+
+/* ---------- 舰体升级 ---------- */
+const SHIP_TIERS = [
+  { lv: 1, name: '探针舰', need: 0,    sub: '尖首探针，单引擎，能飞就行。' },
+  { lv: 2, name: '巡航舰', need: 120,  sub: '后掠双翼展开，尾焰更稳，长途不飘。' },
+  { lv: 3, name: '星轨舰', need: 360,  sub: '加装环轨护罩，舷窗开始有星轨反光。' },
+  { lv: 4, name: '破晓舰', need: 720,  sub: '能量核心点亮，舰身出现琥珀呼吸光。' },
+  { lv: 5, name: '深空舰', need: 1500, sub: '三重引擎上线，侧舷挂载深空探测舱。' },
+  { lv: 6, name: '远星级', need: 3000, sub: '外层轨道环展开，整舰进入远星航行形态。' }
+];
+function shipState() {
+  const min = computeMetrics().doneMin;
+  let idx = 0;
+  for (let i = 0; i < SHIP_TIERS.length; i++) if (min >= SHIP_TIERS[i].need) idx = i;
+  const cur = SHIP_TIERS[idx], next = SHIP_TIERS[idx + 1] || null;
+  const frac = next ? clamp((min - cur.need) / (next.need - cur.need), 0, 1) : 1;
+  return { lv: cur.lv, cur: cur, next: next, frac: frac, min: min };
+}
+function renderShipPanel() {
+  const st = shipState();
+  window.__shipLv = st.lv;
+  const nameEl = $('#shipName'), subEl = $('#shipSub'), nextEl = $('#shipNext'), barEl = $('#shipBar'), tiersEl = $('#shipTiers');
+  if (nameEl) nameEl.innerHTML = st.cur.name + ' <span class="mono">Lv.' + st.lv + '</span>';
+  if (subEl) subEl.textContent = st.cur.sub;
+  if (nextEl) nextEl.textContent = st.next
+    ? '再飞 ' + Math.ceil(st.next.need - st.min) + ' 分钟升级'
+    : '已达最高等级 · 远星航行形态';
+  if (barEl) barEl.style.width = (st.frac * 100).toFixed(1) + '%';
+  if (tiersEl) tiersEl.innerHTML = SHIP_TIERS.map(function (t) {
+    return '<span class="ship-tier' + (st.lv >= t.lv ? ' is-on' : '') + (st.lv === t.lv ? ' is-now' : '') + '">' +
+      t.name + '</span>';
+  }).join('');
+  const tag = $('#shipTag');
+  if (tag) {
+    tag.textContent = st.cur.name + ' · Lv.' + st.lv;
+    tag.classList.toggle('is-high', st.lv >= 4);
+  }
+}
+function checkShipUpgrade() {
+  const st = shipState();
+  if (!S.shipSeen) S.shipSeen = 1;
+  if (st.lv > S.shipSeen) {
+    const info = st.cur;
+    setTimeout(function () {
+      showToast('舰体升级 · ' + info.name + '：' + info.sub);
+    }, 1500);
+    S.shipSeen = st.lv;
+    save();
+  }
+}
+function unlockedBadgeCount() {
+  const m = computeMetrics();
+  return BADGES.filter(function (b) { return b.get(m) >= b.target; }).length;
 }
 
 /* ---------- 航程图 ---------- */
@@ -3530,16 +3628,21 @@ function renderFleetList() {
     return;
   }
   if (!fleetMembers.length) { list.innerHTML = '<div class="fleet-empty">还没有队友在线。把编队码发给同学，一起航行。</div>'; return; }
-  list.innerHTML = fleetMembers.map(function (m) {
+  list.innerHTML = fleetMembers.map(function (m, i) {
     const me = cloudUser && m.id === cloudUser.id;
-    return '<div class="fleet-row"><span class="who">' + escapeHTML(m.nick || '舰长') +
-      (me ? '<span class="me">你</span>' : '') + '</span>' +
-      '<span class="ly">本周 ' + (m.week || 0) + ' ly · 今日 ' + (m.ly || 0) + ' ly</span></div>';
+    return '<div class="fleet-row">' +
+      '<span class="fleet-rank">#' + (i + 1) + '</span>' +
+      '<div class="fleet-main"><div class="who">' + escapeHTML(m.nick || '舰长') +
+      (me ? '<span class="me">你</span>' : '') + '</div>' +
+      '<div class="fleet-sub"><span class="fleet-badges">' + (m.ach || 0) + ' 徽章</span>' +
+      '<span class="fleet-ship">' + escapeHTML(m.ship || '探针舰') + '</span></div></div>' +
+      '<span class="ly">本周 ' + (m.week || 0) + ' ly<br>今日 ' + (m.ly || 0) + ' ly</span></div>';
   }).join('');
 }
 
 function renderBadges() {
   const m = computeMetrics();
+  renderShipPanel();
   renderStarMap();
   renderStarDex();
   renderFleetList();
@@ -3729,7 +3832,10 @@ let fleetCh = null;
 let fleetMembers = [];
 function trackFleet() {
   if (!fleetCh || !cloudUser || !cloudChannelsReady()) return;
-  try { fleetCh.track({ nick: (S.settings.fleetNick || '舰长'), ly: todayLy(), week: weekLy(), at: Date.now() }); } catch (e) {}
+  try {
+    fleetCh.track({ nick: (S.settings.fleetNick || '舰长'), ly: todayLy(), week: weekLy(),
+      ach: unlockedBadgeCount(), ship: shipState().cur.name, at: Date.now() });
+  } catch (e) {}
 }
 function cloudChannelsReady() { return !!cloudClient; }
 function todayLy() {
@@ -3783,15 +3889,17 @@ function setupPresence() {
       fleetMembers = [];
       Object.keys(st).forEach(function (k) {
         (st[k] || []).forEach(function (m) {
-          fleetMembers.push({ id: k, nick: m.nick || '舰长', ly: m.ly || 0, week: m.week || 0 });
+          fleetMembers.push({ id: k, nick: m.nick || '舰长', ly: m.ly || 0, week: m.week || 0,
+            ach: Math.max(0, Number(m.ach) || 0), ship: typeof m.ship === 'string' ? m.ship : '探针舰' });
         });
       });
-      fleetMembers.sort(function (a, b) { return (b.week || 0) - (a.week || 0); });
+      fleetMembers.sort(function (a, b) { return (b.week || 0) - (a.week || 0) || (b.ach || 0) - (a.ach || 0); });
       renderFleet(fleetMembers.length);
     });
     fleetCh.subscribe(function (status) {
       if (status === 'SUBSCRIBED' && fleetCh) {
-        fleetCh.track({ nick: (S.settings.fleetNick || '舰长'), ly: todayLy(), week: weekLy(), at: Date.now() });
+        fleetCh.track({ nick: (S.settings.fleetNick || '舰长'), ly: todayLy(), week: weekLy(),
+          ach: unlockedBadgeCount(), ship: shipState().cur.name, at: Date.now() });
       }
     });
   } catch (err) { renderFleet(0); }
@@ -5513,6 +5621,53 @@ function initScene() {
       ctx.beginPath(); ctx.arc(-L * 0.52, 0, nR, 0, 6.2832); ctx.fill();
     }
 
+    const lv = window.__shipLv || 1;
+
+    // 双翼：Lv.2 起展开，Lv.5 加长
+    if (lv >= 2) {
+      const wing = lv >= 5 ? 1.32 : 1;
+      [-1, 1].forEach(function (sd) {
+        ctx.beginPath();
+        ctx.moveTo(-L * 0.10, sd * L * 0.045);
+        ctx.lineTo(-L * 0.30 * wing, sd * L * 0.150 * wing);
+        ctx.lineTo(-L * 0.44 * wing, sd * L * 0.118 * wing);
+        ctx.lineTo(-L * 0.34, sd * L * 0.050);
+        ctx.lineTo(-L * 0.14, sd * L * 0.046);
+        ctx.closePath();
+        const wg = ctx.createLinearGradient(0, sd * L * 0.05, 0, sd * L * 0.16);
+        wg.addColorStop(0, 'rgba(18,36,48,.95)');
+        wg.addColorStop(1, 'rgba(7,16,24,.92)');
+        ctx.fillStyle = wg; ctx.fill();
+        ctx.strokeStyle = 'rgba(240,163,62,.30)'; ctx.lineWidth = 1; ctx.stroke();
+      });
+    }
+
+    // 环轨护罩：Lv.3 起
+    if (lv >= 3) {
+      const a = 0.15 + Math.sin(t * 1.1) * 0.05;
+      ctx.save();
+      ctx.rotate(Math.sin(t * 0.45) * 0.06);
+      ctx.strokeStyle = 'rgba(240,163,62,' + a.toFixed(3) + ')';
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.ellipse(0, 0, L * 0.60, L * 0.155, 0, 0, 6.2832); ctx.stroke();
+      ctx.restore();
+    }
+
+    // 外层轨道环 + 卫星光点：Lv.6
+    if (lv >= 6) {
+      ctx.save();
+      ctx.rotate(-t * 0.18);
+      ctx.strokeStyle = 'rgba(233,241,247,.22)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.ellipse(0, 0, L * 0.78, L * 0.205, 0, 0, 6.2832); ctx.stroke();
+      for (let i = 0; i < 3; i++) {
+        const ang = t * 0.7 + i * 2.094;
+        const px = Math.cos(ang) * L * 0.78, py = Math.sin(ang) * L * 0.205;
+        ctx.fillStyle = 'rgba(240,163,62,.85)';
+        ctx.beginPath(); ctx.arc(px, py, 1.4, 0, 6.2832); ctx.fill();
+      }
+      ctx.restore();
+    }
+
     // 细长探针舰：尖首、后掠翼、尾喷舱
     const hull = [
       [L * 0.52, 0], [L * 0.34, -L * 0.030], [L * 0.10, -L * 0.044], [-L * 0.08, -L * 0.046],
@@ -5534,7 +5689,28 @@ function initScene() {
     ctx.beginPath();
     ctx.moveTo(L * 0.52, 0); ctx.lineTo(L * 0.34, -L * 0.030); ctx.lineTo(L * 0.10, -L * 0.044);
     ctx.lineTo(-L * 0.08, -L * 0.046); ctx.lineTo(-L * 0.15, -L * 0.118); ctx.lineTo(-L * 0.33, -L * 0.104);
-    ctx.strokeStyle = 'rgba(240,163,62,.62)'; ctx.lineWidth = 1.3; ctx.stroke();
+    ctx.strokeStyle = lv >= 6 ? 'rgba(255,214,150,.9)' : 'rgba(240,163,62,.62)';
+    ctx.lineWidth = lv >= 6 ? 1.7 : 1.3; ctx.stroke();
+
+    // 能量核心：Lv.4 起
+    if (lv >= 4) {
+      const pulse = 0.5 + Math.sin(t * 2.1) * 0.22;
+      const cr = L * 0.095;
+      const cg2 = ctx.createRadialGradient(L * 0.02, 0, 0, L * 0.02, 0, cr);
+      cg2.addColorStop(0, 'rgba(255,224,168,' + (0.42 + pulse * 0.3).toFixed(3) + ')');
+      cg2.addColorStop(1, 'rgba(240,163,62,0)');
+      ctx.fillStyle = cg2;
+      ctx.beginPath(); ctx.arc(L * 0.02, 0, cr, 0, 6.2832); ctx.fill();
+    }
+
+    // 侧舷深空舱：Lv.5 起
+    if (lv >= 5) {
+      [-1, 1].forEach(function (sd) {
+        roundRectPath(ctx, -L * 0.40, sd * L * 0.096 - L * 0.014, L * 0.11, L * 0.028, L * 0.012);
+        ctx.fillStyle = 'rgba(19,40,52,.95)'; ctx.fill();
+        ctx.strokeStyle = 'rgba(240,163,62,.35)'; ctx.lineWidth = 1; ctx.stroke();
+      });
+    }
 
     // 背脊刻线
     ctx.beginPath();
