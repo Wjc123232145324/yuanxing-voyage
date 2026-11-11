@@ -923,6 +923,34 @@ body.theme-cb{--beacon:#58B6E0;--beacon-deep:#1D5D78;--flare:#D97AB2}
   font-family:var(--font-mono);font-size:11px;color:var(--star);background:rgba(30,55,72,.35)}
 .heat-cell.hot{color:#0A141D;font-weight:700}
 .heat-hint{margin:8px 2px 0;font-size:11.5px;line-height:1.6;color:var(--dust)}
+
+.mtag{display:inline-block;margin-right:6px;padding:1px 6px;border-radius:5px;
+  border:1px solid rgba(62,117,144,.45);color:var(--chart-2);font-size:10px;vertical-align:1px}
+.star-map{display:block;width:100%;height:260px;border-radius:12px;background:#04090F;
+  border:1px solid rgba(30,55,72,.6)}
+.star-tip{margin:9px 2px 0;font-size:11.5px;line-height:1.6;color:var(--dust)}
+.star-dex{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;padding:4px 2px 2px}
+.dex-item{display:flex;align-items:center;gap:9px;padding:10px;border-radius:10px;
+  background:rgba(13,26,36,.5);border:1px solid rgba(30,55,72,.55)}
+.dex-dot{width:22px;height:22px;border-radius:50%;flex:none;box-shadow:0 0 12px currentColor}
+.dex-body{min-width:0}
+.dex-name{font-size:12.5px;color:var(--star)}
+.dex-sub{margin-top:2px;font-family:var(--font-mono);font-size:10.5px;color:var(--dust-dim)}
+.dex-item.is-locked{opacity:.42}
+.fleet-list{padding:2px}
+.fleet-row{display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:10px 4px;border-bottom:1px solid rgba(30,55,72,.4)}
+.fleet-row:last-child{border-bottom:0}
+.fleet-row .who{font-size:12.5px;color:var(--star)}
+.fleet-row .me{color:var(--beacon);font-size:11px;margin-left:6px}
+.fleet-row .ly{font-family:var(--font-mono);font-size:12px;color:var(--dust)}
+.fleet-empty{padding:14px 4px;font-size:12px;color:var(--dust)}
+.fleet-ctrl{display:flex;gap:8px;align-items:center}
+.fleet-ctrl .cloud-input{width:150px}
+.log-salvage{grid-column:2 / -1;justify-self:start;margin-top:5px;padding:4px 9px;border-radius:7px;
+  border:1px solid rgba(240,163,62,.35);background:rgba(240,163,62,.08);color:var(--beacon);
+  font-size:11px;line-height:1.4;white-space:nowrap;cursor:pointer}
+.log-salvage.is-done{opacity:.55;border-color:rgba(131,153,172,.35);color:var(--dust-dim);cursor:default}
 </style>
 </head>
 <body>
@@ -1190,6 +1218,18 @@ body.theme-cb{--beacon:#58B6E0;--beacon-deep:#1D5D78;--flare:#D97AB2}
             <input id="missionTitle" name="title" type="text" maxlength="42" placeholder="例如：写完数学第三章错题" autocomplete="off">
           </div>
           <div>
+            <label for="missionTag">科目</label>
+            <select id="missionTag" name="tag">
+              <option value="综合">综合</option>
+              <option value="数学">数学</option>
+              <option value="语文">语文</option>
+              <option value="英语">英语</option>
+              <option value="物理">物理</option>
+              <option value="化学">化学</option>
+              <option value="生物">生物</option>
+            </select>
+          </div>
+          <div>
             <label for="missionEst">预计航段</label>
             <input id="missionEst" name="est" type="number" min="1" max="16" step="1" value="2">
           </div>
@@ -1268,6 +1308,25 @@ body.theme-cb{--beacon:#58B6E0;--beacon-deep:#1D5D78;--flare:#D97AB2}
 
     <!-- ========== 视图：成就 ========== -->
     <section class="view" id="view-badges" data-title="航行成就">
+      <section class="panel star-panel">
+        <div class="panel-hd">
+          <h2>我的航迹星图</h2>
+          <span class="hint" id="starMapCount">0 颗星</span>
+        </div>
+        <canvas id="starMap" class="star-map" aria-label="航迹星图"></canvas>
+        <p class="star-tip" id="starTip">每完成一段，就在这里点亮一颗星，颜色对应科目。点星星能回看那一段。</p>
+      </section>
+
+      <section class="panel">
+        <div class="panel-hd"><h2>星体图鉴</h2><span class="hint">按科目生成不同星体</span></div>
+        <div class="star-dex" id="starDex"></div>
+      </section>
+
+      <section class="panel" id="fleetPanel" hidden>
+        <div class="panel-hd"><h2>同航编队</h2><span class="hint" id="fleetMeta">登录后可加入</span></div>
+        <div class="fleet-list" id="fleetList"></div>
+      </section>
+
       <div class="panel">
         <div class="panel-hd">
           <h2>全部徽章</h2>
@@ -1328,6 +1387,30 @@ body.theme-cb{--beacon:#58B6E0;--beacon-deep:#1D5D78;--flare:#D97AB2}
             <button class="btn btn-sm btn-ghost" id="cloudOutBtn" type="button">退出登录</button>
           </div>
           <span class="cloud-msg" id="cloudSyncMsg" style="margin-top:8px;display:block"></span>
+        </div>
+      </section>
+
+      <section class="set-group">
+        <h3>同航编队</h3>
+        <div class="set-row is-wide">
+          <div class="label">
+            <b>编队码</b>
+            <small>和同学填同一个 6 位码，就能互相看到今天飞了多少光年；只同步汇总数，不同步任务名和备注。</small>
+          </div>
+          <div class="ctrl fleet-ctrl">
+            <input class="cloud-input" id="fleetCode" type="text" maxlength="6" placeholder="例如 YX2026" autocomplete="off">
+            <button class="btn btn-sm" id="fleetSave" type="button">保存</button>
+          </div>
+        </div>
+        <div class="set-row is-wide">
+          <div class="label">
+            <b>舰名</b>
+            <small>编队里显示的名字，留空就是「舰长」。</small>
+          </div>
+          <div class="ctrl fleet-ctrl">
+            <input class="cloud-input" id="fleetNick" type="text" maxlength="10" placeholder="舰长" autocomplete="off">
+            <button class="btn btn-sm" id="fleetNickSave" type="button">保存</button>
+          </div>
         </div>
       </section>
 
@@ -1618,7 +1701,7 @@ const BADGES = [
 const DEFAULT_SETTINGS = {
   duration: 25, dailyGoal: 120, strict: true, sound: true,
   ambient: 'none', scene: true, volume: 35, muted: false, notify: false,
-  restDuration: 15, goalDate: '', fontScale: 'std', theme: 'void'
+  restDuration: 15, goalDate: '', fontScale: 'std', theme: 'void', fleetCode: '', fleetNick: ''
 };
 
 /* ---------- 工具 ---------- */
@@ -1701,6 +1784,7 @@ function migrateState(parsed) {
       id: s.id || 'legacy-' + i,
       taskId: s.taskId || null,
       taskTitle: typeof s.taskTitle === 'string' && s.taskTitle.trim() ? s.taskTitle : '未指派任务',
+      tag: typeof s.tag === 'string' && STAR_KINDS[s.tag] ? s.tag : '',
       plannedSec: cleanSec(s.plannedSec),
       focusSec: cleanSec(s.focusSec),
       start: Number(s.start) || Number(s.end) || Date.now(),
@@ -1775,7 +1859,8 @@ function computeMetrics() {
   const doneSec = done.reduce(function (a, s) { return a + (s.focusSec || 0); }, 0);
   const allSec = S.sessions.reduce(function (a, s) { return a + (s.focusSec || 0); }, 0);
   const doneMin = doneSec / 60;
-  const totalLy = Math.floor(doneMin);
+  const salvageSec = S.sessions.reduce(function (a, s) { return a + (s.salvaged ? (s.focusSec || 0) / 2 : 0); }, 0);
+  const totalLy = Math.floor((doneSec + salvageSec) / 60);
   const doneCount = done.length;
   const abortedCount = S.sessions.length - doneCount;
   const maxSegMin = done.reduce(function (a, s) { return Math.max(a, (s.focusSec || 0) / 60); }, 0);
@@ -1836,6 +1921,10 @@ function activeElapsed() {
 function currentTaskTitle() {
   const m = S.missions.filter(function (x) { return x.id === S.currentTaskId; })[0];
   return m ? m.title : '未指派任务';
+}
+function currentTaskTag() {
+  const m = S.missions.filter(function (x) { return x.id === S.currentTaskId; })[0];
+  return (m && m.tag) || '综合';
 }
 /* ---------- 休整（娱乐模式） ---------- */
 function restElapsed() {
@@ -1972,7 +2061,8 @@ function startTimer() {
     pausedMs: 0,
     pauseStart: 0,
     taskId: S.currentTaskId,
-    taskTitle: currentTaskTitle()
+    taskTitle: currentTaskTitle(),
+    taskTag: currentTaskTag()
   };
   save();
   resetAway();
@@ -2024,6 +2114,7 @@ function finishTimer(completed, reason, opts) {
     id: uid(),
     taskId: a.taskId || null,
     taskTitle: a.taskTitle || '未指派任务',
+    tag: a.taskTag || '综合',
     plannedSec: a.plannedSec,
     focusSec: focusSec,
     start: a.startAt || Date.now(),
@@ -2031,6 +2122,7 @@ function finishTimer(completed, reason, opts) {
     completed: !!completed,
     reason: reason || ''
   });
+  if (typeof trackFleet === 'function') trackFleet();
   let taskNote = '';
   if (completed && a.taskId) {
     const mission = S.missions.filter(function (m) { return m.id === a.taskId; })[0];
@@ -2464,6 +2556,31 @@ function renderTimer() {
   if (elRead) elRead.textContent = fmtClock(elapsed);
 }
 
+/* ---------- 星体类型 ---------- */
+const STAR_KINDS = {
+  '数学': { name: '蓝矮星', color: '#5FA8DE' },
+  '语文': { name: '白矮星', color: '#DCE7F0' },
+  '英语': { name: '双星', color: '#9FD2C9' },
+  '物理': { name: '红矮星', color: '#D97A5A' },
+  '化学': { name: '彗星', color: '#B98FD6' },
+  '生物': { name: '星云', color: '#7FC18A' },
+  '综合': { name: '琥珀星', color: '#F0A33E' }
+};
+function inferTag(title) {
+  const t = String(title || '');
+  if (/数学|导数|函数|几何|三角|数列|概率|方程/.test(t)) return '数学';
+  if (/语文|作文|阅读|文言|古诗|默写/.test(t)) return '语文';
+  if (/英语|单词|语法|听力/.test(t)) return '英语';
+  if (/物理|受力|电路|电磁|运动|光学/.test(t)) return '物理';
+  if (/化学|元素|有机|实验/.test(t)) return '化学';
+  if (/生物|细胞|遗传|生态|光合/.test(t)) return '生物';
+  return '综合';
+}
+function starKind(session) {
+  const tag = session.tag || inferTag(session.taskTitle);
+  return STAR_KINDS[tag] || STAR_KINDS['综合'];
+}
+
 /* ---------- 航程图 ---------- */
 function buildStarmap() {
   const map = $('#starmap');
@@ -2700,7 +2817,8 @@ function renderMissions() {
       '<button class="check" type="button" role="checkbox" aria-checked="' + (m.done ? 'true' : 'false') +
       '" aria-label="标记完成" data-act="toggle" data-id="' + m.id + '"><i></i></button>' +
       '<div class="mission-main"><div class="mission-title">' + escapeHTML(m.title) + '</div>' +
-      '<div class="mission-meta">' + (doneSegs ? '进度 ' + Math.min(doneSegs, segs) + '/' + segs + ' 段 · ' : '预计 ' + segs + ' 段 · ') +
+      '<div class="mission-meta">' + (m.tag ? '<span class="mtag">' + m.tag + '</span>' : '') +
+        (doneSegs ? '进度 ' + Math.min(doneSegs, segs) + '/' + segs + ' 段 · ' : '预计 ' + segs + ' 段 · ') +
         '约 ' + fmtMin(mins) + ' 分钟</div>' +
       '<div class="mission-pbar" aria-hidden="true"><i style="transform:scaleX(' + barPct.toFixed(2) + ')"></i></div></div>' +
       '<div class="mission-acts">' +
@@ -2784,7 +2902,10 @@ function renderLog() {
         '<div class="log-dur">' + fmtClock(s.focusSec) + '</div>' +
         '<div class="log-ly">' + (s.completed ? '+' + Math.floor(s.focusSec / 60) + ' ly' : '0 ly') + '</div>' +
         '<div class="log-state' + (s.completed ? '' : ' is-abort') + '">' +
-        (s.completed ? '完成' : (s.reason || '紧急返航')) + '</div></div>';
+        (s.completed ? '完成' : (s.reason || '紧急返航')) + '</div>' +
+        (!s.completed ? '<button class="log-salvage' + (s.salvaged ? ' is-done' : '') + '" type="button" data-salvage="' + s.id + '">' +
+          (s.salvaged ? '已回收 +' + Math.floor((s.focusSec || 0) / 120) + ' ly' : '打捞残骸 10 星屑') + '</button>' : '') +
+        '</div>';
     });
     return out + '</div>';
   }).join('');
@@ -3255,8 +3376,173 @@ function renderStats() {
 }
 
 /* ---------- 成就 ---------- */
+function hash32(str) {
+  let h = 2166136261;
+  for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = (h * 16777619) >>> 0; }
+  return h >>> 0;
+}
+function maxDayDone() {
+  const byDay = {};
+  S.sessions.forEach(function (x) {
+    if (!x.completed || !x.end) return;
+    const k = dayKey(x.end);
+    byDay[k] = (byDay[k] || 0) + 1;
+  });
+  return Object.keys(byDay).reduce(function (a, k) { return Math.max(a, byDay[k]); }, 0);
+}
+function renderStarDex() {
+  const el = $('#starDex');
+  if (!el) return;
+  const counts = {};
+  S.sessions.forEach(function (x) {
+    if (!x.completed && !x.salvaged) return;
+    const k = x.tag || inferTag(x.taskTitle);
+    counts[k] = (counts[k] || 0) + 1;
+  });
+  const m = computeMetrics();
+  let html = Object.keys(STAR_KINDS).map(function (k) {
+    const t = STAR_KINDS[k];
+    const n = counts[k] || 0;
+    return '<div class="dex-item' + (n ? '' : ' is-locked') + '">' +
+      '<span class="dex-dot" style="background:' + t.color + ';color:' + t.color + '"></span>' +
+      '<div class="dex-body"><div class="dex-name">' + t.name + ' · ' + k + '</div>' +
+      '<div class="dex-sub">' + (n ? n + ' 颗已点亮' : '完成一段' + k + '任务') + '</div></div></div>';
+  }).join('');
+  const rare = [
+    { name: '蓝巨星', cond: '累计 100 ly', ok: m.totalLy >= 100 },
+    { name: '星云团', cond: '单日 3 段', ok: maxDayDone() >= 3 },
+    { name: '极光', cond: '连续 7 天', ok: m.streak >= 7 }
+  ];
+  html += rare.map(function (r) {
+    return '<div class="dex-item' + (r.ok ? '' : ' is-locked') + '">' +
+      '<span class="dex-dot" style="background:linear-gradient(140deg,#8FD3FF,#B98FD6);color:#8FD3FF"></span>' +
+      '<div class="dex-body"><div class="dex-name">' + r.name + '</div>' +
+      '<div class="dex-sub">' + (r.ok ? '已收录' : r.cond) + '</div></div></div>';
+  }).join('');
+  el.innerHTML = html;
+}
+
+let starHits = [];
+function renderStarMap() {
+  const cvs = $('#starMap');
+  if (!cvs) return;
+  const wrapW = cvs.clientWidth || 340, H = 260;
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  cvs.width = wrapW * dpr; cvs.height = H * dpr;
+  const ctx = cvs.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, wrapW, H);
+
+  // 背景星尘
+  for (let i = 0; i < 90; i++) {
+    const x = (hash32('bg' + i) % 1000) / 1000 * wrapW;
+    const y = (hash32('y' + i) % 1000) / 1000 * H;
+    ctx.fillStyle = 'rgba(131,153,172,' + (0.05 + (i % 5) * 0.03) + ')';
+    ctx.fillRect(x, y, 1, 1);
+  }
+
+  const list = S.sessions.filter(function (x) { return x.completed || x.salvaged; }).sort(function (a, b) { return a.end - b.end; });
+  const countEl = $('#starMapCount');
+  if (countEl) countEl.textContent = list.length + ' 颗星';
+  if (!list.length) {
+    ctx.fillStyle = 'rgba(131,153,172,.55)';
+    ctx.font = '12px ui-monospace, monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('还没有星星，完成第一段航程就会点亮', wrapW / 2, H / 2);
+    starHits = [];
+    return;
+  }
+  const t0 = list[0].end, t1 = list[list.length - 1].end || t0 + 1;
+  const padX = 18, padY = 26;
+  const pos = list.map(function (x) {
+    const h1 = hash32(x.id + 'x'), h2 = hash32(x.id + 'y');
+    const gx = (x.end - t0) / Math.max(1, t1 - t0);
+    return {
+      x: padX + gx * (wrapW - padX * 2) * 0.94 + ((h1 % 100) / 100 - 0.5) * 8,
+      y: padY + (h2 % 1000) / 1000 * (H - padY * 2),
+      s: x
+    };
+  });
+  pos.forEach(function (p) { p.c = starKind(p.s).color; });
+
+  // 星座连线：同科目按时间连
+  ['数学', '语文', '英语', '物理', '化学', '生物', '综合'].forEach(function (tag) {
+    const same = pos.filter(function (p) { return (p.s.tag || inferTag(p.s.taskTitle)) === tag; });
+    if (same.length < 2) return;
+    ctx.strokeStyle = STAR_KINDS[tag].color.replace(')', ', .14)').replace('rgb', 'rgba');
+    ctx.strokeStyle = STAR_KINDS[tag].color;
+    ctx.globalAlpha = 0.16;
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    same.forEach(function (p, i) { i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y); });
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  });
+
+  // 星点
+  pos.forEach(function (p) {
+    const r = 1.7 + Math.min(4.2, ((p.s.focusSec || 0) / 60) / 8);
+    ctx.shadowColor = p.c;
+    ctx.shadowBlur = 10;
+    ctx.fillStyle = p.c;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = 'rgba(255,255,255,.65)';
+    ctx.beginPath();
+    ctx.arc(p.x - r * 0.2, p.y - r * 0.2, r * 0.35, 0, Math.PI * 2);
+    ctx.fill();
+  });
+  starHits = pos;
+}
+
+function starMapClick(e) {
+  const cvs = $('#starMap');
+  if (!cvs || !starHits.length) return;
+  const r = cvs.getBoundingClientRect();
+  const x = e.clientX - r.left, y = e.clientY - r.top;
+  let best = null, d = 22;
+  starHits.forEach(function (p) {
+    const dd = Math.hypot(p.x - x, p.y - y);
+    if (dd < d) { d = dd; best = p; }
+  });
+  const tip = $('#starTip');
+  if (!tip) return;
+  if (!best) { tip.textContent = '没有点中星星。点亮点能回看那一段。'; return; }
+  const s = best.s;
+  const dt = new Date(s.end);
+  tip.textContent = dateCN(dt) + ' ' + clockOf(s.start) + '–' + clockOf(s.end) + ' · ' +
+    Math.round((s.focusSec || 0) / 60) + ' 分钟 · ' + (s.completed ? '抵达' : '中断') +
+    (s.taskTitle ? ' · ' + s.taskTitle : '') + (s.note ? ' · “' + s.note + '”' : '');
+}
+
+function renderFleetList() {
+  const panel = $('#fleetPanel'), list = $('#fleetList'), meta = $('#fleetMeta');
+  if (!panel) return;
+  if (!cloudUser) { panel.hidden = true; return; }
+  panel.hidden = false;
+  const code = (S.settings.fleetCode || '').trim().toUpperCase();
+  if (meta) meta.textContent = code ? '编队 ' + code + ' · ' + fleetMembers.length + ' 人' : '公共航道 · ' + fleetMembers.length + ' 人在航';
+  if (!list) return;
+  if (!code) {
+    list.innerHTML = '<div class="fleet-empty">设置一个 6 位编队码，才会显示队友名单。公共航道只统计人数，不列名字。</div>';
+    return;
+  }
+  if (!fleetMembers.length) { list.innerHTML = '<div class="fleet-empty">还没有队友在线。把编队码发给同学，一起航行。</div>'; return; }
+  list.innerHTML = fleetMembers.map(function (m) {
+    const me = cloudUser && m.id === cloudUser.id;
+    return '<div class="fleet-row"><span class="who">' + escapeHTML(m.nick || '舰长') +
+      (me ? '<span class="me">你</span>' : '') + '</span>' +
+      '<span class="ly">本周 ' + (m.week || 0) + ' ly · 今日 ' + (m.ly || 0) + ' ly</span></div>';
+  }).join('');
+}
+
 function renderBadges() {
   const m = computeMetrics();
+  renderStarMap();
+  renderStarDex();
+  renderFleetList();
   const unlocked = BADGES.filter(function (b) { return b.get(m) >= b.target; }).length;
   $('#badgeCount').textContent = '已解锁 ' + unlocked + ' · 待解锁 ' + (BADGES.length - unlocked);
 
@@ -3440,27 +3726,73 @@ function pullCloud(silent) {
 }
 
 let fleetCh = null;
+let fleetMembers = [];
+function trackFleet() {
+  if (!fleetCh || !cloudUser || !cloudChannelsReady()) return;
+  try { fleetCh.track({ nick: (S.settings.fleetNick || '舰长'), ly: todayLy(), week: weekLy(), at: Date.now() }); } catch (e) {}
+}
+function cloudChannelsReady() { return !!cloudClient; }
+function todayLy() {
+  const k = dayKey(Date.now());
+  let sec = 0;
+  S.sessions.forEach(function (x) {
+    if (dayKey(x.end) !== k) return;
+    if (x.completed) sec += (x.focusSec || 0);
+    if (x.salvaged) sec += (x.focusSec || 0) / 2;
+  });
+  return Math.floor(sec / 60);
+}
+function weekLy() {
+  const monday = new Date(); monday.setHours(0,0,0,0);
+  const day = monday.getDay() || 7;
+  monday.setDate(monday.getDate() - (day - 1));
+  const start = monday.getTime();
+  let sec = 0;
+  S.sessions.forEach(function (x) {
+    if (!x.end || x.end < start) return;
+    if (x.completed) sec += (x.focusSec || 0);
+    if (x.salvaged) sec += (x.focusSec || 0) / 2;
+  });
+  return Math.floor(sec / 60);
+}
+function fleetChannelName() {
+  const code = (S.settings.fleetCode || '').trim().toUpperCase();
+  return 'yuanxing-fleet-' + (code || 'global');
+}
 function renderFleet(n) {
   const tag = $('#fleetTag');
-  if (!tag) return;
-  if (!n) { tag.hidden = true; return; }
-  tag.hidden = false;
-  tag.textContent = '此刻 ' + n + ' 人在航行';
+  if (tag) {
+    if (!n) tag.hidden = true;
+    else {
+      tag.hidden = false;
+      tag.textContent = (S.settings.fleetCode ? '编队 ' : '此刻 ') + n + ' 人在航行';
+    }
+  }
+  renderFleetList();
 }
 function setupPresence() {
   if (!cloudClient || !cloudUser) { renderFleet(0); return; }
   if (!cloudClient.channel) return;
   try {
     if (fleetCh) { cloudClient.removeChannel(fleetCh); fleetCh = null; }
-    fleetCh = cloudClient.channel('yuanxing-fleet', { config: { presence: { key: cloudUser.id } } });
+    fleetMembers = [];
+    fleetCh = cloudClient.channel(fleetChannelName(), { config: { presence: { key: cloudUser.id } } });
     fleetCh.on('presence', { event: 'sync' }, function () {
-      const st = fleetCh.presenceState();
-      let n = 0;
-      Object.keys(st).forEach(function (k) { n += (st[k] || []).length; });
-      renderFleet(n);
+      const st = fleetCh && fleetCh.presenceState();
+      if (!st) return;
+      fleetMembers = [];
+      Object.keys(st).forEach(function (k) {
+        (st[k] || []).forEach(function (m) {
+          fleetMembers.push({ id: k, nick: m.nick || '舰长', ly: m.ly || 0, week: m.week || 0 });
+        });
+      });
+      fleetMembers.sort(function (a, b) { return (b.week || 0) - (a.week || 0); });
+      renderFleet(fleetMembers.length);
     });
     fleetCh.subscribe(function (status) {
-      if (status === 'SUBSCRIBED' && fleetCh) fleetCh.track({ at: Date.now() });
+      if (status === 'SUBSCRIBED' && fleetCh) {
+        fleetCh.track({ nick: (S.settings.fleetNick || '舰长'), ly: todayLy(), week: weekLy(), at: Date.now() });
+      }
     });
   } catch (err) { renderFleet(0); }
 }
@@ -3562,6 +3894,8 @@ function durationAdvice() {
 
 function renderSettings() {
   const st = S.settings;
+  if ($('#fleetCode')) $('#fleetCode').value = st.fleetCode || '';
+  if ($('#fleetNick')) $('#fleetNick').value = st.fleetNick || '';
   $('#durRange').value = st.duration;
   $('#durValue').textContent = st.duration + ' 分钟';
   $('#goalRange').value = st.dailyGoal;
@@ -4513,7 +4847,8 @@ function bindEvents() {
       return;
     }
     const est = clamp(parseInt($('#missionEst').value, 10) || 1, 1, 16);
-    S.missions.unshift({ id: uid(), title: title, est: est, createdAt: Date.now(), done: false });
+    const tag = $('#missionTag').value || '综合';
+    S.missions.unshift({ id: uid(), title: title, est: est, tag: tag, createdAt: Date.now(), done: false });
     save();
     $('#missionTitle').value = '';
     $('#missionEst').value = 2;
@@ -4623,6 +4958,27 @@ function bindEvents() {
     }
     const ios = /iPhone|iPad|iPod/i.test(navigator.userAgent);
     showToast(ios ? '点 Safari 底部的分享按钮，选「添加到主屏幕」。' : '在浏览器菜单里选「安装应用」或「添加到主屏幕」。');
+  });
+
+  const starMap = $('#starMap');
+  if (starMap) starMap.addEventListener('click', starMapClick);
+
+  const fleetSave = $('#fleetSave');
+  if (fleetSave) fleetSave.addEventListener('click', function () {
+    const v = ($('#fleetCode').value || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
+    S.settings.fleetCode = v;
+    if ($('#fleetCode')) $('#fleetCode').value = v;
+    save();
+    setupPresence();
+    showToast(v ? '已加入编队 ' + v + '，队友在线时会显示在这里。' : '已回到公共航道。');
+  });
+  const fleetNickSave = $('#fleetNickSave');
+  if (fleetNickSave) fleetNickSave.addEventListener('click', function () {
+    const v = ($('#fleetNick').value || '').trim().slice(0, 10);
+    S.settings.fleetNick = v;
+    save();
+    setupPresence();
+    showToast(v ? '舰名已改为 ' + v + '。' : '舰名已清空，显示为「舰长」。');
   });
 
   const memoSave = $('#cardMemoSave');
@@ -4903,6 +5259,21 @@ function bindEvents() {
   });
   const logList = $('#logList');
   if (logList) logList.addEventListener('click', function (e) {
+    const sv = e.target.closest('[data-salvage]');
+    if (sv) {
+      const sid = sv.getAttribute('data-salvage');
+      const target = S.sessions.filter(function (x) { return x.id === sid; })[0];
+      if (!target || target.completed || target.salvaged) return;
+      const sameDay = S.sessions.some(function (x) { return x.salvaged && dayKey(x.end) === dayKey(target.end); });
+      if (sameDay) { showToast('今天已经打捞过一次了，明天再来。'); return; }
+      if ((S.stars || 0) < 10) { showToast('星屑不够，先休整拾几颗星。'); return; }
+      S.stars -= 10;
+      target.salvaged = true;
+      save(); renderAll(); renderLog();
+      if (typeof trackFleet === 'function') trackFleet();
+      showToast('残骸已回收，折算 +' + Math.floor((target.focusSec || 0) / 120) + ' ly。');
+      return;
+    }
     const row = e.target.closest('[data-card]');
     if (!row) return;
     const id = row.getAttribute('data-card');
@@ -4982,6 +5353,7 @@ function bindEvents() {
   });
 
   window.addEventListener('resize', function () {
+    if (currentView() === 'badges') renderStarMap();
     syncAmbientIndicator();
     Object.keys(charts).forEach(function (k) { if (charts[k]) charts[k].resize(); });
   });
