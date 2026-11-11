@@ -3622,6 +3622,11 @@ function renderFleetList() {
   if (!panel) return;
   if (!cloudUser) { panel.hidden = true; return; }
   panel.hidden = false;
+  if (isTestAccount()) {
+    if (meta) meta.textContent = '测试账号 · 不参与排行榜';
+    if (list) list.innerHTML = '<div class="fleet-empty">这个账号只用来验收全部成就，不会出现在队友的排行榜里。</div>';
+    return;
+  }
   const code = (S.settings.fleetCode || '').trim().toUpperCase();
   if (meta) meta.textContent = code ? '编队 ' + code + ' · ' + fleetMembers.length + ' 人' : '公共航道 · ' + fleetMembers.length + ' 人在航';
   if (!list) return;
@@ -3676,6 +3681,7 @@ const DEFAULT_CLOUD_CFG = {
   key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpyZXRoaGxwZWlraGltenl3aW16Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTM5Nzc4NDcsImV4cCI6MjEwOTU1Mzg0N30.1g6b0OywWjNP9ncGk45-4SVpVIJ_FWnfrH0cORIqhxg'
 };
 const CLOUD_TABLE = 'voyages';
+const TEST_ACCOUNT_ID = 'b142b58f-5085-42dd-a80f-67a38640edf3';
 const CLOUD_SDK = 'https://fastly.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js';
 let cloudCfg = null;
 let cloudClient = null;
@@ -3683,6 +3689,9 @@ let cloudUser = null;
 let cloudPushTimer = null;
 let cloudSyncAt = 0;
 let cloudAccountName = '';
+let cloudIsTest = false;
+let cloudAfterSignInAt = 0;
+function isTestAccount() { return cloudIsTest || !!(cloudUser && cloudUser.id === TEST_ACCOUNT_ID); }
 let cloudAuthBusy = false;
 let cloudAuthPending = null;
 
@@ -3837,6 +3846,7 @@ function pullCloud(silent) {
 let fleetCh = null;
 let fleetMembers = [];
 function trackFleet() {
+  if (isTestAccount()) return;
   if (!fleetCh || !cloudUser || !cloudChannelsReady()) return;
   try {
     fleetCh.track({ nick: (S.settings.fleetNick || '舰长'), ly: todayLy(), week: weekLy(),
@@ -3883,6 +3893,7 @@ function renderFleet(n) {
   renderFleetList();
 }
 function setupPresence() {
+  if (isTestAccount()) { teardownPresence(); renderFleet(0); return; }
   if (!cloudClient || !cloudUser) { renderFleet(0); return; }
   if (!cloudClient.channel) return;
   try {
@@ -3918,9 +3929,13 @@ function teardownPresence() {
 
 function afterSignIn() {
   if (!cloudClient || !cloudUser) return;
-  setupPresence();
+  const now = Date.now();
+  if (now - cloudAfterSignInAt < 1500) return;
+  cloudAfterSignInAt = now;
   ensureCloudProfile(cloudUser).then(function (name) {
     if (name && name !== cloudAccountName) { cloudAccountName = name; renderCloud(); }
+    if (isTestAccount()) { teardownPresence(); renderFleet(0); }
+    else setupPresence();
   });
   cloudClient.from(CLOUD_TABLE).select('data,updated_at').eq('user_id', cloudUser.id).maybeSingle().then(function (res) {
     if (res.error) { setCloudMsg($('#cloudSyncMsg'), '读取云端失败：' + res.error.message, 'bad'); return; }
@@ -3976,10 +3991,12 @@ function insertCloudProfile(user, name) {
 
 function ensureCloudProfile(user) {
   if (!cloudClient || !user) return Promise.resolve('');
-  return cloudClient.from('profiles').select('username').eq('user_id', user.id).maybeSingle().then(function (res) {
+  return cloudClient.from('profiles').select('username,is_test').eq('user_id', user.id).maybeSingle().then(function (res) {
+    cloudIsTest = !!(res.data && res.data.is_test);
     if (res.data && res.data.username) return res.data.username;
     if (cloudAuthBusy) return '';
     const base = cloudDefaultAccount(user);
+    cloudIsTest = false;
     return insertCloudProfile(user, base).catch(function () {
       const alt = base.slice(0, 12) + Math.floor(Math.random() * 9000 + 1000);
       return insertCloudProfile(user, alt).catch(function () { return ''; });
@@ -4106,7 +4123,7 @@ function renderCloud() {
   if (cloudUser) {
     const who = $('#cloudWho');
     if (who) who.textContent = (cloudAccountName ? '账号 ' + cloudAccountName + ' · ' : '') +
-      (cloudUser.email || '（未绑定邮箱）') + (cloudSyncAt ? ' · 上次同步 ' + nowLabel() : '');
+      (cloudUser.email || '（未绑定邮箱）') + (isTestAccount() ? ' · 测试账号，不参与排行榜' : '') + (cloudSyncAt ? ' · 上次同步 ' + nowLabel() : '');
   }
   if (currentView() === 'settings') {
     $('#viewSub').textContent = cloudUser
@@ -5072,6 +5089,7 @@ function bindEvents() {
     cloudClient.auth.signOut().then(function () {
       cloudUser = null;
       cloudAccountName = '';
+      cloudIsTest = false;
       renderCloud();
       showToast('已退出登录，本地数据保留');
     });
