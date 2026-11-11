@@ -1404,7 +1404,8 @@ body.theme-cb{--beacon:#58B6E0;--beacon-deep:#1D5D78;--flare:#D97AB2}
             <small>登录后航段、任务、设置会同步到你的 Supabase 项目，换设备也能接着飞。</small>
           </div>
           <div class="cloud-fields">
-            <input class="cloud-input" id="cloudEmail" type="email" placeholder="邮箱" autocomplete="username">
+            <input class="cloud-input" id="cloudAccountName" type="text" placeholder="账号（登录名，2–16 位）" autocomplete="username" spellcheck="false">
+            <input class="cloud-input" id="cloudEmail" type="email" placeholder="邮箱（注册必填；用邮箱登录可只填这里）" autocomplete="email">
             <input class="cloud-input" id="cloudPass" type="password" placeholder="密码（至少 6 位）" autocomplete="current-password">
             <div class="cloud-acts">
               <button class="btn btn-sm btn-primary" id="cloudLoginBtn" type="button">登录</button>
@@ -1412,6 +1413,7 @@ body.theme-cb{--beacon:#58B6E0;--beacon-deep:#1D5D78;--flare:#D97AB2}
               <button class="btn btn-sm btn-ghost" id="cloudForgetBtn" type="button">换个项目</button>
               <span class="cloud-msg" id="cloudMsg"></span>
             </div>
+            <p class="cloud-hint">账号和邮箱都能单独登录。账号只用于登录与显示，邮箱不会公开。</p>
           </div>
         </div>
 
@@ -1618,7 +1620,7 @@ body.theme-cb{--beacon:#58B6E0;--beacon-deep:#1D5D78;--flare:#D97AB2}
       </section>
 
       <p class="about">
-        <b>远星航程</b> 是一个专注计时工具：启动一段航程，飞船沿航线前进；中途离开就紧急返航，该段不计里程。所有数据只存在这台设备的浏览器本地存储里，不上传任何服务器，换浏览器或清理缓存即丢失，重要的记录请定期导出。
+        <b>远星航程</b> 是一个专注计时工具：启动一段航程，飞船沿航线前进；中途离开就紧急返航，该段不计里程。未登录时数据只存在这台设备的浏览器里；登录云端账号后会同步到你的 Supabase 项目，换设备登录同一账号即可接着飞。重要的记录仍建议定期导出备份。
       </p>
     </section>
 
@@ -3680,6 +3682,9 @@ let cloudClient = null;
 let cloudUser = null;
 let cloudPushTimer = null;
 let cloudSyncAt = 0;
+let cloudAccountName = '';
+let cloudAuthBusy = false;
+let cloudAuthPending = null;
 
 function loadCloudCfg() {
   let raw = null;
@@ -3745,6 +3750,7 @@ function connectCloud(cb) {
     cloudClient.auth.onAuthStateChange(function (evt, sess) {
       const was = cloudUser && cloudUser.id;
       cloudUser = sess ? sess.user : null;
+      if (!cloudUser) cloudAccountName = '';
       renderCloud();
       if (cloudUser && (!was || was !== cloudUser.id)) afterSignIn();
     });
@@ -3913,6 +3919,9 @@ function teardownPresence() {
 function afterSignIn() {
   if (!cloudClient || !cloudUser) return;
   setupPresence();
+  ensureCloudProfile(cloudUser).then(function (name) {
+    if (name && name !== cloudAccountName) { cloudAccountName = name; renderCloud(); }
+  });
   cloudClient.from(CLOUD_TABLE).select('data,updated_at').eq('user_id', cloudUser.id).maybeSingle().then(function (res) {
     if (res.error) { setCloudMsg($('#cloudSyncMsg'), '读取云端失败：' + res.error.message, 'bad'); return; }
     if (!res.data) { pushCloud(false); return; }
@@ -3939,30 +3948,147 @@ function scheduleCloudPush() {
   cloudPushTimer = setTimeout(function () { cloudPushTimer = null; pushCloud(true); }, 3200);
 }
 
+function validAccountName(v) {
+  return /^[A-Za-z0-9_\u4e00-\u9fa5]{2,16}$/.test(v);
+}
+
+function cloudDefaultAccount(user) {
+  const meta = user && user.user_metadata && user.user_metadata.username;
+  if (validAccountName(meta || '')) return meta;
+  const base = ((user && user.email) || '').split('@')[0].replace(/[^A-Za-z0-9_\u4e00-\u9fa5]/g, '').slice(0, 16);
+  return base || ('captain' + Math.floor(Math.random() * 9000 + 1000));
+}
+
+function insertCloudProfile(user, name) {
+  return cloudClient.from('profiles').insert({
+    user_id: user.id, username: name, email: (user && user.email) || ''
+  }).then(function (res) {
+    if (!res.error) return name;
+    const e = res.error;
+    if (/duplicate|unique|23505/i.test((e.code || '') + ' ' + (e.message || ''))) {
+      const err = new Error('这个账号已被占用');
+      err.cloudDup = true;
+      throw err;
+    }
+    throw e;
+  });
+}
+
+function ensureCloudProfile(user) {
+  if (!cloudClient || !user) return Promise.resolve('');
+  return cloudClient.from('profiles').select('username').eq('user_id', user.id).maybeSingle().then(function (res) {
+    if (res.data && res.data.username) return res.data.username;
+    if (cloudAuthBusy) return '';
+    const base = cloudDefaultAccount(user);
+    return insertCloudProfile(user, base).catch(function () {
+      const alt = base.slice(0, 12) + Math.floor(Math.random() * 9000 + 1000);
+      return insertCloudProfile(user, alt).catch(function () { return ''; });
+    });
+  }).catch(function () { return ''; });
+}
+
+function cloudErrText(err) {
+  const m = (err && err.message) || '';
+  if (/Invalid login credentials/i.test(m)) return '账号或密码不正确';
+  if (/already registered|User already registered/i.test(m)) return '这个邮箱已注册，直接登录';
+  if (/Failed to fetch|NetworkError|Load failed/i.test(m)) return '连不上项目，检查网络';
+  if (/rate limit|too many/i.test(m)) return '尝试太频繁，等一会儿再试';
+  return m || '操作失败，请重试';
+}
+
+function signInWithEmail(email, pass) {
+  setCloudMsg($('#cloudMsg'), '正在登录…');
+  cloudAuthBusy = true;
+  cloudClient.auth.signInWithPassword({ email: email, password: pass }).then(function (res) {
+    cloudAuthBusy = false;
+    if (res.error) { setCloudMsg($('#cloudMsg'), cloudErrText(res.error), 'bad'); return; }
+    const user = res.data && res.data.user;
+    cloudAccountName = '';
+    setCloudMsg($('#cloudMsg'), '已登录', 'ok');
+    ensureCloudProfile(user).then(function (name) {
+      cloudAccountName = name || '';
+      renderCloud();
+    });
+    afterSignIn();
+  }).catch(function (err) { cloudAuthBusy = false; setCloudMsg($('#cloudMsg'), cloudErrText(err), 'bad'); });
+}
+
 function cloudAuth(mode) {
-  if (!cloudClient) { setCloudMsg($('#cloudMsg'), '还没连上项目', 'bad'); return; }
+  if (!cloudClient) {
+    if (!cloudAuthPending) {
+      cloudAuthPending = mode;
+      setCloudMsg($('#cloudMsg'), '正在加载云端模块，稍等…');
+      let tries = 0;
+      const timer = setInterval(function () {
+        tries += 1;
+        if (cloudClient) {
+          clearInterval(timer);
+          const pending = cloudAuthPending;
+          cloudAuthPending = null;
+          if (pending) cloudAuth(pending);
+        } else if (tries > 30) {
+          clearInterval(timer);
+          cloudAuthPending = null;
+          setCloudMsg($('#cloudMsg'), '云端模块没加载出来，检查网络后刷新重试', 'bad');
+        }
+      }, 500);
+    }
+    return;
+  }
+  const account = ($('#cloudAccountName').value || '').trim();
   const email = ($('#cloudEmail').value || '').trim();
   const pass = ($('#cloudPass').value || '').trim();
-  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { setCloudMsg($('#cloudMsg'), '邮箱格式不对', 'bad'); return; }
+
+  if (mode === 'signup') {
+    if (!validAccountName(account)) { setCloudMsg($('#cloudMsg'), '账号 2–16 位，可用字母、数字、下划线或中文', 'bad'); return; }
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { setCloudMsg($('#cloudMsg'), '邮箱格式不对', 'bad'); return; }
+    if (pass.length < 6) { setCloudMsg($('#cloudMsg'), '密码至少 6 位', 'bad'); return; }
+    setCloudMsg($('#cloudMsg'), '正在注册…');
+    cloudAuthBusy = true;
+    cloudClient.auth.signUp({ email: email, password: pass, options: { data: { username: account } } }).then(function (res) {
+      if (res.error) { cloudAuthBusy = false; setCloudMsg($('#cloudMsg'), cloudErrText(res.error), 'bad'); return; }
+      if (!res.data || !res.data.session) { cloudAuthBusy = false; setCloudMsg($('#cloudMsg'), '注册成功，去邮箱点确认链接后再登录', 'ok'); return; }
+      return insertCloudProfile(res.data.user, account).then(function (name) {
+        cloudAuthBusy = false;
+        cloudAccountName = name;
+        setCloudMsg($('#cloudMsg'), '注册成功，账号「' + name + '」可以直接登录了', 'ok');
+        renderCloud();
+        afterSignIn();
+      }).catch(function (err) {
+        cloudAuthBusy = false;
+        setCloudMsg($('#cloudMsg'), err && err.cloudDup ? '这个账号已被占用，换一个' : '账号资料保存失败：' + cloudErrText(err), 'bad');
+      });
+    }).catch(function (err) { cloudAuthBusy = false; setCloudMsg($('#cloudMsg'), cloudErrText(err), 'bad'); });
+    return;
+  }
+
+  if (!account && !email) { setCloudMsg($('#cloudMsg'), '填账号或邮箱', 'bad'); return; }
   if (pass.length < 6) { setCloudMsg($('#cloudMsg'), '密码至少 6 位', 'bad'); return; }
-  setCloudMsg($('#cloudMsg'), mode === 'signup' ? '正在注册…' : '正在登录…');
-  const p = mode === 'signup'
-    ? cloudClient.auth.signUp({ email: email, password: pass })
-    : cloudClient.auth.signInWithPassword({ email: email, password: pass });
-  p.then(function (res) {
-    if (res.error) {
-      const m = /Invalid login credentials/i.test(res.error.message) ? '邮箱或密码不正确'
-        : /already registered/i.test(res.error.message) ? '这个邮箱已注册，直接登录'
-        : /Failed to fetch|NetworkError|Load failed/i.test(res.error.message) ? '连不上项目，检查 URL 与网络'
-        : res.error.message;
-      setCloudMsg($('#cloudMsg'), m, 'bad');
+  if (!account) { signInWithEmail(email, pass); return; }
+  if (account.indexOf('@') >= 0) { signInWithEmail(account, pass); return; }
+
+  setCloudMsg($('#cloudMsg'), '正在登录…');
+  cloudClient.functions.invoke('login', { body: { account: account, password: pass } }).then(function (res) {
+    if (res.error) { setCloudMsg($('#cloudMsg'), '账号或密码不正确', 'bad'); return; }
+    const d = res.data || {};
+    if (d.error) { setCloudMsg($('#cloudMsg'), d.error, 'bad'); return; }
+    const session = d.session;
+    if (!session || !session.access_token || !session.refresh_token) {
+      setCloudMsg($('#cloudMsg'), '登录服务没有返回会话，请重试', 'bad');
       return;
     }
-    if (mode === 'signup' && res.data && !res.data.session) {
-      setCloudMsg($('#cloudMsg'), '注册成功，去邮箱点确认链接后再登录', 'ok');
-      return;
-    }
-    setCloudMsg($('#cloudMsg'), '已登录', 'ok');
+    return cloudClient.auth.setSession({
+      access_token: session.access_token,
+      refresh_token: session.refresh_token
+    }).then(function (r) {
+      if (r.error) { setCloudMsg($('#cloudMsg'), '建立登录态失败：' + cloudErrText(r.error), 'bad'); return; }
+      cloudAccountName = account;
+      setCloudMsg($('#cloudMsg'), '已登录', 'ok');
+      renderCloud();
+      afterSignIn();
+    });
+  }).catch(function () {
+    setCloudMsg($('#cloudMsg'), '连不上登录服务，检查网络后重试', 'bad');
   });
 }
 
@@ -3979,8 +4105,13 @@ function renderCloud() {
   }
   if (cloudUser) {
     const who = $('#cloudWho');
-    if (who) who.textContent = (cloudUser.email || '（未命名账号）') + (cloudSyncAt
-      ? ' · 上次同步 ' + nowLabel() : '');
+    if (who) who.textContent = (cloudAccountName ? '账号 ' + cloudAccountName + ' · ' : '') +
+      (cloudUser.email || '（未绑定邮箱）') + (cloudSyncAt ? ' · 上次同步 ' + nowLabel() : '');
+  }
+  if (currentView() === 'settings') {
+    $('#viewSub').textContent = cloudUser
+      ? '云端账号 ' + (cloudAccountName || cloudUser.email || '')
+      : (cloudCfg ? '未登录云端 · 数据存在本机' : '数据仅保存在这台设备的浏览器里');
   }
 }
 
@@ -4065,7 +4196,7 @@ function renderMeta() {
     log: '共 ' + S.sessions.length + ' 段 · 完成 ' + m.doneCount + ' 段',
     stats: '累计 ' + m.totalLy + ' 光年 · 当前 ' + SECTORS[m.sectorIdx].name,
     badges: unlocked + ' / ' + BADGES.length + ' 已解锁',
-    settings: cloudUser ? ('云端账号 ' + (cloudUser.email || '')) : (cloudCfg ? '未登录云端 · 数据存在本机' : '数据仅保存在这台设备的浏览器里')
+    settings: cloudUser ? ('云端账号 ' + (cloudAccountName || cloudUser.email || '')) : (cloudCfg ? '未登录云端 · 数据存在本机' : '数据仅保存在这台设备的浏览器里')
   };
   $('#viewSub').textContent = subs[view] || '';
 }
@@ -4940,6 +5071,7 @@ function bindEvents() {
     if (!cloudClient) return;
     cloudClient.auth.signOut().then(function () {
       cloudUser = null;
+      cloudAccountName = '';
       renderCloud();
       showToast('已退出登录，本地数据保留');
     });
