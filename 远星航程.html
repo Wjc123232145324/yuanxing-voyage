@@ -328,7 +328,6 @@ body.is-docked .dial-state::before{opacity:1;animation:live-blink 2.6s ease-in-o
   padding:15px 16px;border-bottom:1px solid var(--steel-soft)}
 .panel-hd h2{font-size:15px;letter-spacing:.05em}
 .panel-hd .hint{font-size:11px;color:var(--dust-dim);font-family:var(--font-mono);letter-spacing:.03em}
-.panel-bd{padding:16px}
 .empty{padding:34px 16px;text-align:center;color:var(--dust-dim);font-size:13px;line-height:1.9}
 .empty .big{display:block;font-family:var(--font-serif);font-size:16px;color:var(--dust);margin-bottom:6px}
 
@@ -668,7 +667,7 @@ body.is-reveal .stat-row{animation:panel-in .62s .24s var(--e-out) both}
   --card-shadow:inset 0 1px 0 rgba(255,255,255,.05), 0 22px 44px -34px rgba(0,0,0,.92);
 }
 .console,.brief,.panel,.starmap-panel,.chart-card,.set-group,.stats-grid,.badge,.dialog,
-.mission-item,.log-item,.cloud-card{
+.mission-item,.log-item{
   border:0 !important;border-radius:var(--r-card);
   background:var(--card-bg) !important;
   box-shadow:var(--card-shadow);
@@ -721,10 +720,10 @@ input:focus,select:focus,.cloud-input:focus{box-shadow:inset 0 0 0 1px rgba(240,
 @media (max-width:899px){.toast{bottom:96px}}
 .readout{border:0 !important;border-radius:12px;background:rgba(13,26,36,.55);padding:14px 14px 12px}
 .readout + .readout{margin-left:0}
-.trip,.readouts,.tri{background:none !important;border:0 !important;gap:10px !important}
+.readouts{background:none !important;border:0 !important;gap:10px !important}
 .log-item,.mission-item,.badge{border:0 !important;border-radius:14px;background:rgba(13,26,36,.55) !important}
 .log-item{border-bottom:0 !important}
-.set-group .row,.settings-row{border-bottom:0 !important}
+.set-group .row{border-bottom:0 !important}
 @keyframes halo-breathe{0%,100%{opacity:.5}50%{opacity:.92}}
 @keyframes btn-glow{0%,100%{filter:drop-shadow(0 8px 16px rgba(240,163,62,.18))}
   50%{filter:drop-shadow(0 10px 22px rgba(240,163,62,.38))}}
@@ -2034,7 +2033,7 @@ function finishRest(completed, reason) {
   stopTicking();
   stopAmbient(false);
   renderAll();
-  if (typeof flushPendingCloudSync === 'function') setTimeout(flushPendingCloudSync, 600);
+  setTimeout(flushPendingCloudSync, 600);
   playCue(completed ? 'arrive' : 'abort');
   showToast(completed
     ? '休整结束 · ' + Math.round(sec / 60) + ' 分钟，回到航线吧'
@@ -2184,7 +2183,7 @@ function finishTimer(completed, reason, opts) {
     completed: !!completed,
     reason: reason || ''
   });
-  if (typeof trackFleet === 'function') trackFleet();
+  trackFleet();
   let taskNote = '';
   if (completed && a.taskId) {
     const mission = S.missions.filter(function (m) { return m.id === a.taskId; })[0];
@@ -2210,8 +2209,8 @@ function finishTimer(completed, reason, opts) {
   releaseWake();
   const m = computeMetrics();
   renderAll();
-  if (typeof flushPendingCloudSync === 'function') setTimeout(flushPendingCloudSync, 600);
-  if (typeof checkShipUpgrade === 'function') checkShipUpgrade();
+  setTimeout(flushPendingCloudSync, 600);
+  checkShipUpgrade();
   if (completed) {
     playCue('arrive');
     const sector = SECTORS[m.sectorIdx];
@@ -2241,11 +2240,6 @@ function roundRectPath(ctx, x, y, w, h, r) {
   ctx.lineTo(x + r, y + h); ctx.quadraticCurveTo(x, y + h, x, y + h - r);
   ctx.lineTo(x, y + r); ctx.quadraticCurveTo(x, y, x + r, y);
   ctx.closePath();
-}
-function clipText(ctx, text, maxW) {
-  if (ctx.measureText(text).width <= maxW) return text;
-  while (text.length > 1 && ctx.measureText(text + '…').width > maxW) text = text.slice(0, -1);
-  return text + '…';
 }
 function drawCardFrame(ctx, W, H, style) {
   const line = function (color, width) { ctx.strokeStyle = color; ctx.lineWidth = width; };
@@ -2551,18 +2545,6 @@ function tick() {
 }
 
 /* ---------- 仪表盘渲染 ---------- */
-const SVG_NS = 'http://www.w3.org/2000/svg';
-const ARC_R = 112;
-const ARC_LEN = 2 * Math.PI * ARC_R;
-const DAILY_R = 140;
-const DAILY_LEN = 2 * Math.PI * DAILY_R;
-
-function setArc(el, ratio, len) {
-  if (!el) return;
-  const safe = clamp(ratio, 0, 1);
-  el.setAttribute('stroke-dasharray', (len * safe).toFixed(1) + ' ' + len.toFixed(1));
-}
-
 let lastStateLabel = '';
 function renderTimer() {
   const rest = S.rest;
@@ -3766,10 +3748,7 @@ function setCloudMsg(el, text, kind) {
   el.className = 'cloud-msg' + (kind ? ' is-' + kind : '');
   if (el.id === 'cloudSyncMsg') el.style.display = 'block';
 }
-function nowLabel() {
-  const d = new Date();
-  return pad2(d.getHours()) + ':' + pad2(d.getMinutes());
-}
+function nowLabel() { return clockOf(Date.now()); }
 
 function renderSyncChip() {
   const chip = $('#syncChip'), text = $('#syncChipText');
@@ -3869,6 +3848,11 @@ function adoptCloudData(data, updatedAt) {
   return true;
 }
 
+function cloudNetText(message, fallback) {
+  const text = message || fallback || '网络异常';
+  return /Failed to fetch|NetworkError/i.test(text) ? '连不上项目' : text;
+}
+
 function pushCloud(quiet, doneText, busyText) {
   if (!cloudClient || !cloudUser) return Promise.resolve(false);
   cancelCloudPush();
@@ -3883,7 +3867,7 @@ function pushCloud(quiet, doneText, busyText) {
   }, { onConflict: 'user_id' }).then(function (res) {
     if (btn) btn.disabled = false;
     if (res.error) {
-      const e1 = /Failed to fetch|NetworkError/i.test(res.error.message) ? '连不上项目' : res.error.message;
+      const e1 = cloudNetText(res.error.message);
       setSyncStatus('fail', '同步失败', '上传失败：' + e1, 'bad');
       return false;
     }
@@ -3894,18 +3878,18 @@ function pushCloud(quiet, doneText, busyText) {
     return true;
   }).catch(function (err) {
     if (btn) btn.disabled = false;
-    const e1 = /Failed to fetch|NetworkError/i.test((err && err.message) || '') ? '连不上项目' : ((err && err.message) || '网络异常');
+    const e1 = cloudNetText(err && err.message, '网络异常');
     setSyncStatus('fail', '同步失败', '上传失败：' + e1, 'bad');
     return false;
   });
 }
 
-function pullCloud(silent) {
+function pullCloud() {
   if (!cloudClient || !cloudUser) return;
   setSyncStatus('syncing', '正在读取云端', '正在读取云端…');
   cloudClient.from(CLOUD_TABLE).select('data,updated_at').eq('user_id', cloudUser.id).maybeSingle().then(function (res) {
     if (res.error) {
-      const e2 = /Failed to fetch|NetworkError/i.test(res.error.message) ? '连不上项目' : res.error.message;
+      const e2 = cloudNetText(res.error.message);
       setSyncStatus('fail', '同步失败', '读取失败：' + e2, 'bad');
       return;
     }
@@ -3931,7 +3915,7 @@ let leaderboardTimer = null;
 function trackFleet() {
   if (isTestAccount()) return;
   if (cloudUser) scheduleLeaderboardPush();
-  if (!fleetCh || !cloudUser || !cloudChannelsReady()) return;
+  if (!fleetCh || !cloudUser || !cloudClient) return;
   try {
     fleetCh.track({ nick: (S.settings.fleetNick || '舰长'), ly: todayLy(), week: weekLy(),
       ach: unlockedBadgeCount(), ship: shipState().cur.name, at: Date.now() });
@@ -3944,7 +3928,7 @@ function leaderboardPayload() {
     nick: (S.settings.fleetNick || '舰长').slice(0, 24),
     ly: todayLy(), week: weekLy(), ach: unlockedBadgeCount(),
     ship: shipState().cur.name,
-    fleet_code: (S.settings.fleetCode || '').trim().toUpperCase(),
+    fleet_code: fleetCodeValue(),
     is_test: false,
     updated_at: new Date().toISOString()
   };
@@ -3983,7 +3967,6 @@ function loadLeaderboard(force) {
     })
     .catch(function () {});
 }
-function cloudChannelsReady() { return !!cloudClient; }
 function todayLy() {
   const k = dayKey(Date.now());
   let sec = 0;
@@ -4007,10 +3990,8 @@ function weekLy() {
   });
   return Math.floor(sec / 60);
 }
-function fleetChannelName() {
-  const code = (S.settings.fleetCode || '').trim().toUpperCase();
-  return 'yuanxing-fleet-' + (code || 'global');
-}
+function fleetCodeValue() { return (S.settings.fleetCode || '').trim().toUpperCase(); }
+function fleetChannelName() { return 'yuanxing-fleet-' + (fleetCodeValue() || 'global'); }
 function renderFleet(n) {
   const total = Math.max(n || 0, leaderboardRows.length);
   const tag = $('#fleetTag');
@@ -4018,7 +3999,7 @@ function renderFleet(n) {
     if (!total) tag.hidden = true;
     else {
       tag.hidden = false;
-      const code = (S.settings.fleetCode || '').trim().toUpperCase();
+      const code = fleetCodeValue();
       tag.textContent = (code ? '编队 ' + code + ' · ' : '全体 ') + total + ' 人在航';
     }
   }
@@ -4046,10 +4027,7 @@ function setupPresence() {
       renderFleet(fleetMembers.length);
     });
     fleetCh.subscribe(function (status) {
-      if (status === 'SUBSCRIBED' && fleetCh) {
-        fleetCh.track({ nick: (S.settings.fleetNick || '舰长'), ly: todayLy(), week: weekLy(),
-          ach: unlockedBadgeCount(), ship: shipState().cur.name, at: Date.now() });
-      }
+      if (status === 'SUBSCRIBED') trackFleet();
     });
   } catch (err) { renderFleet(0); }
 }
@@ -4100,38 +4078,25 @@ function mergeRest(local, remote) {
   return base;
 }
 
+function mergeList(remoteList, localList, keyOf, mergeFn) {
+  const map = {};
+  (remoteList || []).forEach(function (x) { map[keyOf(x)] = x; });
+  (localList || []).forEach(function (x) {
+    const key = keyOf(x);
+    map[key] = map[key] ? mergeFn(x, map[key]) : x;
+  });
+  return Object.keys(map).map(function (k) { return map[k]; });
+}
+
 function mergeVoyageData(remoteData) {
   const remote = migrateState(remoteData || {});
   const local = S;
-  const sessions = {};
-  remote.sessions.forEach(function (x) {
-    const key = x.id || ('s' + syncNum(x.start) + '|' + syncNum(x.end));
-    sessions[key] = x;
-  });
-  local.sessions.forEach(function (x) {
-    const key = x.id || ('s' + syncNum(x.start) + '|' + syncNum(x.end));
-    sessions[key] = sessions[key] ? mergeSession(x, sessions[key]) : x;
-  });
-  const missions = {};
-  remote.missions.forEach(function (x) { missions[x.id || x.title] = x; });
-  local.missions.forEach(function (x) {
-    const key = x.id || x.title;
-    missions[key] = missions[key] ? mergeMission(x, missions[key]) : x;
-  });
-  const rests = {};
-  remote.rests.forEach(function (x) {
-    const key = x.id || ('r' + Math.round(syncNum(x.start) / 60000) + '|' + syncNum(x.restSec));
-    rests[key] = x;
-  });
-  local.rests.forEach(function (x) {
-    const key = x.id || ('r' + Math.round(syncNum(x.start) / 60000) + '|' + syncNum(x.restSec));
-    rests[key] = rests[key] ? mergeRest(x, rests[key]) : x;
-  });
-
-  const sessionList = Object.keys(sessions).map(function (k) { return sessions[k]; })
+  const sessionKey = function (x) { return x.id || ('s' + syncNum(x.start) + '|' + syncNum(x.end)); };
+  const restKey = function (x) { return x.id || ('r' + Math.round(syncNum(x.start) / 60000) + '|' + syncNum(x.restSec)); };
+  const sessionList = mergeList(remote.sessions, local.sessions, sessionKey, mergeSession)
     .sort(function (a, b) { return syncNum(a.start) - syncNum(b.start); });
-  const missionList = Object.keys(missions).map(function (k) { return missions[k]; });
-  const restList = Object.keys(rests).map(function (k) { return rests[k]; })
+  const missionList = mergeList(remote.missions, local.missions, function (x) { return x.id || x.title; }, mergeMission);
+  const restList = mergeList(remote.rests, local.rests, restKey, mergeRest)
     .sort(function (a, b) { return syncNum(a.start) - syncNum(b.start); }).slice(-400);
 
   const ls = local.settings || {}, rs = remote.settings || {};
@@ -4140,9 +4105,9 @@ function mergeVoyageData(remoteData) {
     if (!ls[k] && rs[k]) settings[k] = rs[k];
   });
   const frames = Array.from(new Set((local.frames || []).concat(remote.frames || [])));
-  let currentTaskId = null;
-  if (local.currentTaskId && missionList.some(function (m) { return m.id === local.currentTaskId; })) currentTaskId = local.currentTaskId;
-  else if (remote.currentTaskId && missionList.some(function (m) { return m.id === remote.currentTaskId; })) currentTaskId = remote.currentTaskId;
+  const currentTaskId = [local.currentTaskId, remote.currentTaskId].filter(function (id) {
+    return id && missionList.some(function (m) { return m.id === id; });
+  })[0] || null;
 
   return {
     v: DATA_VERSION, settings: settings, missions: missionList, sessions: sessionList,
@@ -4175,7 +4140,7 @@ function afterSignIn() {
   });
   cloudClient.from(CLOUD_TABLE).select('data,updated_at').eq('user_id', cloudUser.id).maybeSingle().then(function (res) {
     if (res.error) {
-      const e1 = /Failed to fetch|NetworkError/i.test(res.error.message) ? '连不上项目' : res.error.message;
+      const e1 = cloudNetText(res.error.message);
       setSyncStatus('fail', '同步失败', '读取云端失败：' + e1, 'bad');
       return;
     }
@@ -5349,7 +5314,7 @@ function bindEvents() {
   const cloudPushBtn = $('#cloudPushBtn');
   if (cloudPushBtn) cloudPushBtn.addEventListener('click', function () { pushCloud(false); });
   const cloudPullBtn = $('#cloudPullBtn');
-  if (cloudPullBtn) cloudPullBtn.addEventListener('click', function () { pullCloud(false); });
+  if (cloudPullBtn) cloudPullBtn.addEventListener('click', function () { pullCloud(); });
   const cloudOut = $('#cloudOutBtn');
   if (cloudOut) cloudOut.addEventListener('click', function () {
     if (!cloudClient) return;
@@ -5798,7 +5763,7 @@ function bindEvents() {
       S.stars -= 10;
       target.salvaged = true;
       save(); renderAll(); renderLog();
-      if (typeof trackFleet === 'function') trackFleet();
+      trackFleet();
       showToast('残骸已回收，折算 +' + Math.floor((target.focusSec || 0) / 120) + ' ly。');
       return;
     }
@@ -6331,7 +6296,7 @@ function initScene() {
 
     drawShip(cruise);
 
-    if (restK > 0.01) drawLounge(restK, dt);
+    if (restK > 0.01) drawLounge(restK);
 
     // 喷口余烬：向后飞散并淡出
     if (spd > 1.5) {
@@ -6364,7 +6329,7 @@ function initScene() {
 
 
   // 休整：温暖的观景舱，和外面的深空彻底换一个气氛
-  function drawLounge(k, dt) {
+  function drawLounge(k) {
     const R = Math.min(W * 0.30, H * 0.36);
     const px = W * 0.58, py = H * 0.38;
     port.x = px; port.y = py; port.r = R;
