@@ -984,6 +984,36 @@ body.theme-cb{--beacon:#58B6E0;--beacon-deep:#1D5D78;--flare:#D97AB2}
   color:var(--dust-dim);font-size:10.5px;white-space:nowrap}
 .ship-tier.is-on{color:var(--beacon);border-color:rgba(240,163,62,.4);background:rgba(240,163,62,.07)}
 .ship-tier.is-now{color:var(--void);background:var(--beacon);border-color:var(--beacon);font-weight:600}
+.title-strip{display:flex;align-items:center;gap:12px;margin:12px 2px 0;padding:11px 2px 12px;
+  border-top:1px solid rgba(30,55,72,.55);border-bottom:1px solid rgba(30,55,72,.55)}
+.title-copy{flex:1;min-width:0}
+.captain-title{display:inline-block;line-height:1.25;transition:color .55s var(--e-out),font-size .55s var(--e-out),
+  font-family .35s ease,font-weight .35s ease,letter-spacing .55s var(--e-out),text-shadow .55s var(--e-out)}
+.title-meta{margin-top:4px;font-family:var(--font-mono);font-size:9.5px;letter-spacing:.08em;color:var(--dust-dim);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.title-gauge{flex:none;width:74px;text-align:right}
+.title-gauge .lv{font-family:var(--font-mono);font-size:9.5px;letter-spacing:.1em;color:var(--dust)}
+.title-bar{height:2px;margin-top:6px;background:rgba(30,55,72,.72);overflow:hidden}
+.title-bar i{display:block;height:100%;width:0;transition:width .55s var(--e-out),background .55s ease}
+.title-panel{background:none !important;border:0 !important;padding:16px 4px 6px !important}
+.title-panel .panel-hd{padding:0 0 10px}
+.title-hero{display:flex;align-items:flex-end;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.title-en{font-family:var(--font-mono);font-size:9px;letter-spacing:.18em;color:var(--dust-dim);padding-bottom:2px}
+.title-sub{margin-top:6px;font-size:11.5px;line-height:1.65;color:var(--dust);max-width:46em}
+.title-track{height:3px;margin:13px 0 7px;background:rgba(30,55,72,.75);overflow:hidden}
+.title-track i{display:block;height:100%;width:0;transition:width .55s var(--e-out),background .55s ease}
+.title-next{font-family:var(--font-mono);font-size:9.5px;letter-spacing:.07em;color:var(--dust-dim)}
+.title-ladder{display:grid;grid-template-columns:1fr;margin-top:14px}
+@media (min-width:560px){.title-ladder{grid-template-columns:1fr 1fr;column-gap:24px}}
+.title-tier{display:flex;align-items:baseline;gap:9px;padding:8px 0;border-bottom:1px solid rgba(30,55,72,.42);opacity:.4}
+.title-tier.is-on{opacity:.72}
+.title-tier.is-now{opacity:1;box-shadow:inset 3px 0 0 var(--title-now-color,var(--beacon));padding-left:8px}
+.title-tier.is-now .title-tier-need{color:var(--title-now-color,var(--beacon))}
+.title-tier-no{flex:none;width:18px;font-family:var(--font-mono);font-size:9.5px;color:var(--dust-dim)}
+.title-tier-name{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  transition:color .45s ease,font-size .45s ease,letter-spacing .45s ease}
+.title-tier-need{flex:none;font-family:var(--font-mono);font-size:9.5px;color:var(--dust-dim)}
+.title-tier.is-now .title-tier-need{color:var(--dust)}
 .fleet-rank{flex:none;width:22px;font-family:var(--font-mono);font-size:11px;color:var(--dust-dim)}
 .fleet-badges{font-family:var(--font-mono);font-size:10.5px;color:var(--beacon);margin-left:6px}
 .fleet-ship{font-size:10.5px;color:var(--dust-dim);margin-left:6px}
@@ -1123,6 +1153,17 @@ body.theme-cb{--beacon:#58B6E0;--beacon-deep:#1D5D78;--flare:#D97AB2}
               </div>
             </div>
             <div class="ship-badge" id="shipTag">探针舰 · Lv.1</div>
+          </div>
+
+          <div class="title-strip">
+            <div class="title-copy">
+              <div class="captain-title" id="titleNow">见习领航员</div>
+              <div class="title-meta" id="titleMeta">累计专注 0 分钟 · 再航 60 分钟晋升</div>
+            </div>
+            <div class="title-gauge">
+              <div class="lv" id="titleLv">TITLE 1/8</div>
+              <div class="title-bar" aria-hidden="true"><i id="titleBar"></i></div>
+            </div>
           </div>
 
           <div class="daily-row">
@@ -1349,6 +1390,21 @@ body.theme-cb{--beacon:#58B6E0;--beacon-deep:#1D5D78;--flare:#D97AB2}
 
     <!-- ========== 视图：成就 ========== -->
     <section class="view" id="view-badges" data-title="航行成就">
+      <section class="panel title-panel">
+        <div class="panel-hd">
+          <h2>船长称号</h2>
+          <span class="hint" id="titleRank">TITLE 1 / 8</span>
+        </div>
+        <div class="title-hero">
+          <div class="captain-title" id="titleBig">见习领航员</div>
+          <div class="title-en" id="titleEn">CADET NAVIGATOR</div>
+        </div>
+        <p class="title-sub" id="titleSub">刚接过舵轮，先从近地轨道起飞。</p>
+        <div class="title-track" aria-hidden="true"><i id="titleTrack"></i></div>
+        <div class="title-next" id="titleNext2">累计专注 0 分钟 · 再航 60 分钟晋升</div>
+        <div class="title-ladder" id="titleLadder"></div>
+      </section>
+
       <section class="panel ship-panel">
         <div class="panel-hd">
           <h2>舰体升级</h2>
@@ -2211,6 +2267,7 @@ function finishTimer(completed, reason, opts) {
   renderAll();
   setTimeout(flushPendingCloudSync, 600);
   checkShipUpgrade();
+  checkTitleUpgrade();
   if (completed) {
     playCue('arrive');
     const sector = SECTORS[m.sectorIdx];
@@ -2636,6 +2693,94 @@ const SHIP_TIERS = [
   { lv: 5, name: '深空舰', need: 1500, sub: '三重引擎上线，侧舷挂载深空探测舱。' },
   { lv: 6, name: '远星级', need: 3000, sub: '外层轨道环展开，整舰进入远星航行形态。' }
 ];
+/* ---------- 船长称号 ---------- */
+const TITLE_TIERS = [
+  { name: '见习领航员', en: 'CADET NAVIGATOR', need: 0, color: '#9DB2C7', font: 'var(--font-sans)', weight: 500, size: 16, spacing: '.03em', glow: '0 0 0 rgba(0,0,0,0)', sub: '刚接过舵轮，先从近地轨道起飞。' },
+  { name: '星海学徒', en: 'STAR SEA APPRENTICE', need: 60, color: '#77D4E8', font: 'var(--font-sans)', weight: 600, size: 17, spacing: '.04em', glow: '0 0 8px rgba(119,212,232,.18)', sub: '已经能在星海里保持航线，继续飞。' },
+  { name: '深空航行者', en: 'DEEP SPACE VOYAGER', need: 180, color: '#6FB2FF', font: 'var(--font-sans)', weight: 600, size: 18, spacing: '.05em', glow: '0 0 10px rgba(111,178,255,.23)', sub: '长途航行不再飘，深空开始有你的航迹。' },
+  { name: '星轨守望者', en: 'ORBIT WATCHER', need: 420, color: '#F2C66D', font: 'var(--font-serif)', weight: 600, size: 19, spacing: '.06em', glow: '0 0 12px rgba(242,198,109,.26)', sub: '你成了别人航图上的一颗固定星。' },
+  { name: '银河引路人', en: 'GALACTIC PATHFINDER', need: 900, color: '#F0A33E', font: 'var(--font-serif)', weight: 700, size: 20, spacing: '.07em', glow: '0 0 14px rgba(240,163,62,.32)', sub: '穿过银河尘埃，替舰队找路。' },
+  { name: '远星指挥官', en: 'FARSTAR COMMANDER', need: 1800, color: '#FF845C', font: 'var(--font-serif)', weight: 700, size: 21, spacing: '.08em', glow: '0 0 16px rgba(255,132,92,.36)', sub: '整支远星舰队的航向由你划定。' },
+  { name: '星海领航长', en: 'STAR SEA NAVIGATOR', need: 3600, color: '#D9F4FF', font: 'var(--font-serif)', weight: 800, size: 22, spacing: '.09em', glow: '0 0 18px rgba(217,244,255,.4)', sub: '星图边缘也留下过你的尾焰。' },
+  { name: '远星传说', en: 'FARSTAR LEGEND', need: 7200, color: '#FFE1A3', font: 'var(--font-serif)', weight: 900, size: 24, spacing: '.11em', glow: '0 0 22px rgba(255,225,163,.5)', sub: '你的名字被写进远星航程的传说。' }
+];
+function titleState() {
+  const min = computeMetrics().allMin;
+  let idx = 0;
+  for (let i = 0; i < TITLE_TIERS.length; i++) if (min >= TITLE_TIERS[i].need) idx = i;
+  const cur = TITLE_TIERS[idx], next = TITLE_TIERS[idx + 1] || null;
+  const frac = next ? clamp((min - cur.need) / (next.need - cur.need), 0, 1) : 1;
+  return { idx: idx, cur: cur, next: next, min: min, frac: frac };
+}
+function paintTitle(el, t) {
+  if (!el) return;
+  el.textContent = t.name;
+  el.style.color = t.color;
+  el.style.fontFamily = t.font;
+  el.style.fontWeight = t.weight;
+  el.style.fontSize = t.size + 'px';
+  el.style.letterSpacing = t.spacing;
+  el.style.textShadow = t.glow;
+}
+function titleMinutes(min) {
+  min = Math.round(min);
+  if (min < 60) return min + ' 分钟';
+  const h = Math.floor(min / 60), m = min % 60;
+  return h + ' 小时' + (m ? ' ' + m + ' 分钟' : '');
+}
+function titleNextText(st) {
+  const total = '累计专注 ' + titleMinutes(st.min);
+  return st.next
+    ? total + ' · 再航 ' + titleMinutes(st.next.need - st.min) + ' 可晋升'
+    : total + ' · 已达最高称号';
+}
+function renderTitles() {
+  const st = titleState();
+  if (S.titleSeen == null) S.titleSeen = st.idx;
+  const now = $('#titleNow'), meta = $('#titleMeta'), lv = $('#titleLv'), bar = $('#titleBar');
+  const big = $('#titleBig'), en = $('#titleEn'), sub = $('#titleSub'), track = $('#titleTrack');
+  const next2 = $('#titleNext2'), rank = $('#titleRank'), ladder = $('#titleLadder');
+  paintTitle(now, st.cur);
+  paintTitle(big, st.cur);
+  if (meta) meta.textContent = titleNextText(st);
+  if (lv) lv.textContent = 'TITLE ' + (st.idx + 1) + '/' + TITLE_TIERS.length;
+  if (bar) {
+    bar.style.width = (st.frac * 100).toFixed(1) + '%';
+    bar.style.background = 'linear-gradient(90deg,rgba(255,255,255,.12),' + st.cur.color + ')';
+  }
+  if (en) en.textContent = st.cur.en;
+  if (sub) sub.textContent = st.cur.sub;
+  if (track) {
+    track.style.width = (st.frac * 100).toFixed(1) + '%';
+    track.style.background = 'linear-gradient(90deg,rgba(255,255,255,.1),' + st.cur.color + ')';
+  }
+  if (next2) next2.textContent = titleNextText(st);
+  if (rank) rank.textContent = 'TITLE ' + (st.idx + 1) + ' / ' + TITLE_TIERS.length;
+  if (ladder) {
+    ladder.style.setProperty('--title-now-color', st.cur.color);
+    ladder.innerHTML = TITLE_TIERS.map(function (t, i) {
+    return '<div class="title-tier' + (i <= st.idx ? ' is-on' : '') + (i === st.idx ? ' is-now' : '') + '">' +
+      '<span class="title-tier-no">' + pad2(i + 1) + '</span>' +
+      '<span class="title-tier-name" data-title-tier="' + i + '">' + t.name + '</span>' +
+      '<span class="title-tier-need">' + (t.need ? '+' + titleMinutes(t.need) : '起点') + '</span></div>';
+    }).join('');
+    Array.prototype.forEach.call(ladder.querySelectorAll('[data-title-tier]'), function (el) {
+      paintTitle(el, TITLE_TIERS[Number(el.dataset.titleTier)]);
+      el.style.fontSize = Math.max(13, TITLE_TIERS[Number(el.dataset.titleTier)].size - 4) + 'px';
+    });
+  }
+}
+function checkTitleUpgrade() {
+  const st = titleState();
+  if (S.titleSeen == null) { S.titleSeen = st.idx; return; }
+  if (st.idx <= S.titleSeen) return;
+  S.titleSeen = st.idx;
+  save();
+  setTimeout(function () {
+    showToast('称号晋升 · ' + st.cur.name + '：' + st.cur.sub);
+  }, 1900);
+}
+
 function shipState() {
   const min = computeMetrics().doneMin;
   let idx = 0;
@@ -3673,6 +3818,7 @@ function renderFleetList() {
 function renderBadges() {
   const m = computeMetrics();
   renderShipPanel();
+  renderTitles();
   renderStarMap();
   renderStarDex();
   loadLeaderboard();
