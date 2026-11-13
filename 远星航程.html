@@ -27,6 +27,8 @@
   --beacon-deep:#8A5A1C;
   --flare:#D95B44;
   --chart-2:#3E7590;
+  --title-color:#F0A33E;
+  --title-rgb:240,163,62;
   --font-serif:"Noto Serif CJK SC","Source Han Serif SC","Songti SC","Noto Serif",serif;
   --font-sans:"Noto Sans CJK SC","PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;
   --font-mono:ui-monospace,"SFMono-Regular","DejaVu Sans Mono","Menlo","Consolas",monospace;
@@ -245,7 +247,7 @@ body.is-docked .dial-state::before{opacity:1;animation:live-blink 2.6s ease-in-o
 .scope-win img.is-on{opacity:1}
 .scope-win::after{content:"";position:absolute;inset:0;pointer-events:none;
   box-shadow:inset 0 0 30px 6px rgba(5,10,17,.55)}
-.scope-hair{position:absolute;inset:7px;border:1px solid rgba(233,241,247,.10);pointer-events:none}
+.scope-hair{position:absolute;inset:7px;border:1px solid rgba(var(--title-rgb,233,241,247),.12);pointer-events:none;transition:border-color .55s ease}
 .scope-meta{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-top:8px;
   font-family:var(--font-mono);font-size:10px;letter-spacing:.12em;color:var(--dust-dim)}
 .field{margin-top:20px}
@@ -681,7 +683,7 @@ body.is-reveal .stat-row{animation:panel-in .62s .24s var(--e-out) both}
 .scene-hair{inset:9px;border:1px solid rgba(233,241,247,.06);border-radius:11px}
 .scene-tick{opacity:.55}
 .scope{background:var(--card-bg) !important;border:0 !important;border-radius:14px;box-shadow:var(--card-shadow)}
-.scope-hair{inset:8px;border-radius:10px;border-color:rgba(233,241,247,.07)}
+.scope-hair{inset:8px;border-radius:10px;border-color:rgba(var(--title-rgb,233,241,247),.09)}
 .stats-grid{gap:12px !important;background:none !important}
 .stat{background:rgba(13,26,36,.55);border-radius:12px;padding:16px 14px}
 .chart-card,.panel,.set-group{margin-top:18px}
@@ -829,7 +831,7 @@ body.is-cruising .scope-win img.is-on{animation:scope-cruise 20s ease-in-out inf
 
 /* ---------- 抵达光爆 ---------- */
 .warp-flash{position:fixed;inset:0;z-index:60;pointer-events:none;opacity:0;
-  background:radial-gradient(circle at 50% 46%,rgba(255,240,214,.55),rgba(240,163,62,.18) 40%,transparent 72%)}
+  background:radial-gradient(circle at 50% 46%,rgba(255,240,214,.55),rgba(var(--title-rgb,240,163,62),.18) 40%,transparent 72%)}
 .warp-flash.is-on{animation:warp-flash 1s cubic-bezier(.16,1,.3,1) both}
 @keyframes warp-flash{0%{opacity:0;transform:scale(1.14)}18%{opacity:.72}55%{opacity:.18}100%{opacity:0;transform:scale(1)}}
 
@@ -966,10 +968,13 @@ body.theme-cb{--beacon:#58B6E0;--beacon-deep:#1D5D78;--flare:#D97AB2}
   font-size:11px;line-height:1.4;white-space:nowrap;cursor:pointer}
 .log-salvage.is-done{opacity:.55;border-color:rgba(131,153,172,.35);color:var(--dust-dim);cursor:default}
 
-.ship-badge{position:absolute;left:14px;top:44px;z-index:3;padding:3px 9px;border-radius:999px;
-  border:1px solid rgba(240,163,62,.28);background:rgba(5,10,17,.55);color:var(--beacon);
-  font-family:var(--font-mono);font-size:10.5px;letter-spacing:.04em;backdrop-filter:blur(6px)}
-.ship-badge.is-high{border-color:rgba(240,163,62,.55);box-shadow:0 0 14px rgba(240,163,62,.18)}
+.ship-badge{position:absolute;left:14px;top:44px;z-index:3;display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border-radius:999px;
+  border:1px solid rgba(var(--title-rgb,240,163,62),.28);background:rgba(5,10,17,.55);color:var(--beacon);
+  font-family:var(--font-mono);font-size:10.5px;letter-spacing:.04em;backdrop-filter:blur(6px);
+  transition:border-color .55s ease,box-shadow .55s ease}
+.ship-badge.is-high{border-color:rgba(var(--title-rgb,240,163,62),.55);box-shadow:0 0 14px rgba(var(--title-rgb,240,163,62),.18)}
+.ship-emblem{width:5px;height:5px;flex:none;transform:rotate(45deg);background:var(--title-color,var(--beacon));
+  box-shadow:0 0 7px var(--title-color,var(--beacon));transition:background .55s ease,box-shadow .55s ease}
 .ship-panel{padding-bottom:14px}
 .ship-now{padding:6px 4px 2px}
 .ship-name{font-family:var(--font-serif);font-size:19px;color:var(--star);letter-spacing:.04em}
@@ -1009,6 +1014,21 @@ body.theme-cb{--beacon:#58B6E0;--beacon-deep:#1D5D78;--flare:#D97AB2}
 .title-tier.is-on{opacity:.72}
 .title-tier.is-now{opacity:1;box-shadow:inset 3px 0 0 var(--title-now-color,var(--beacon));padding-left:8px}
 .title-tier.is-now .title-tier-need{color:var(--title-now-color,var(--beacon))}
+.title-name-row{display:flex;align-items:center;gap:8px;min-width:0}
+.title-sigils{display:inline-flex;gap:4px;flex:none}
+.title-sigil{display:block;width:5px;height:5px;transform:rotate(45deg);border:1px solid rgba(131,153,172,.45);opacity:.45}
+.title-sigil.is-on{border-color:var(--title-color,var(--beacon));background:var(--title-color,var(--beacon));opacity:.9;
+  box-shadow:0 0 6px var(--title-color,var(--beacon))}
+.title-sigil-row{display:flex;flex-wrap:wrap;gap:7px;margin-top:12px}
+.title-sigil-chip{display:inline-flex;align-items:baseline;gap:6px;padding:5px 9px;border-radius:7px;
+  border:1px solid rgba(30,55,72,.65);background:rgba(10,20,29,.32);color:var(--dust-dim);font-size:10.5px;
+  opacity:.45;transition:border-color .35s,color .35s,opacity .35s}
+.title-sigil-chip.is-on{border-color:rgba(var(--title-rgb,240,163,62),.35);color:var(--star);opacity:1}
+.title-sigil-chip b{font-family:var(--font-mono);font-size:9.5px;letter-spacing:.06em;color:var(--title-color,var(--beacon));font-weight:600}
+.title-sigil-chip span{font-size:10px;white-space:nowrap}
+.title-card-row{display:flex;align-items:center;gap:10px;margin-top:12px}
+.title-card-row .hint{font-size:10.5px}
+#titleCardBtn{color:var(--title-color,var(--beacon));letter-spacing:.08em}
 .title-tier-no{flex:none;width:18px;font-family:var(--font-mono);font-size:9.5px;color:var(--dust-dim)}
 .title-tier-name{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
   transition:color .45s ease,font-size .45s ease,letter-spacing .45s ease}
@@ -1152,13 +1172,13 @@ body.theme-cb{--beacon:#58B6E0;--beacon-deep:#1D5D78;--flare:#D97AB2}
                 <div class="dial-plan" id="dialPlan">计划航段 25 分钟</div>
               </div>
             </div>
-            <div class="ship-badge" id="shipTag">探针舰 · Lv.1</div>
+            <div class="ship-badge" id="shipTag"><span class="ship-emblem" aria-hidden="true"></span><span id="shipTagText">探针舰 · Lv.1</span></div>
           </div>
 
           <div class="title-strip">
             <div class="title-copy">
-              <div class="captain-title" id="titleNow">见习领航员</div>
-              <div class="title-meta" id="titleMeta">累计专注 0 分钟 · 再航 60 分钟晋升</div>
+              <div class="title-name-row"><div class="captain-title" id="titleNow">见习领航员</div><div class="title-sigils" id="titleSigils" aria-label="称号徽记"></div></div>
+              <div class="title-meta" id="titleMeta">累计专注 0 分钟 · 再航 1 小时可晋升</div>
             </div>
             <div class="title-gauge">
               <div class="lv" id="titleLv">TITLE 1/8</div>
@@ -1401,7 +1421,9 @@ body.theme-cb{--beacon:#58B6E0;--beacon-deep:#1D5D78;--flare:#D97AB2}
         </div>
         <p class="title-sub" id="titleSub">刚接过舵轮，先从近地轨道起飞。</p>
         <div class="title-track" aria-hidden="true"><i id="titleTrack"></i></div>
-        <div class="title-next" id="titleNext2">累计专注 0 分钟 · 再航 60 分钟晋升</div>
+        <div class="title-next" id="titleNext2">累计专注 0 分钟 · 再航 1 小时可晋升</div>
+        <div class="title-sigil-row" id="titleSigilRow"></div>
+        <div class="title-card-row"><button class="mini-btn" id="titleCardBtn" type="button">生成船长档案</button><span class="hint">可保存或分享</span></div>
         <div class="title-ladder" id="titleLadder"></div>
       </section>
 
@@ -2289,6 +2311,7 @@ function finishTimer(completed, reason, opts) {
 }
 /* ---------- 航程卡：抵达后生成一张可保存的海报 ---------- */
 var lastCard = null;
+var lastCardKind = 'voyage';
 function roundRectPath(ctx, x, y, w, h, r) {
   ctx.beginPath();
   ctx.moveTo(x + r, y);
@@ -2487,6 +2510,7 @@ function showVoyageCard(session, metrics, newSector) {
   const modal = $('#cardModal');
   if (!modal) return;
   lastCardSid = session && session.id || '';
+  lastCardKind = 'voyage';
   const memoRow = $('#cardMemoRow'), memo = $('#cardMemo');
   if (memoRow) memoRow.hidden = !lastCardSid;
   if (memo) memo.value = (session && session.note) || '';
@@ -2505,8 +2529,17 @@ function showVoyageCard(session, metrics, newSector) {
 }
 function copyVoyageLink() {
   const link = 'https://wjc123232145324.github.io/yuanxing-voyage/';
-  const ly = lastCard ? (Number(S.sessions.length ? S.sessions[S.sessions.length - 1].focusSec : 0) / 60) : 0;
-  const text = '我在「远星航程」飞了 ' + Math.round(ly) + ' 光年 · ' + link;
+  const m = computeMetrics(), st = titleState();
+  let text;
+  if (lastCardKind === 'captain') {
+    text = '我的远星航程船长档案：' + st.cur.name + ' · 累计专注 ' + titleMinutes(m.allMin) + ' · ' + link;
+  } else if (lastCardKind === 'weekly') {
+    const wk = weeklySummary();
+    text = '我的远星航程本周：+' + Math.round(wk.totalMin) + ' ly · 完成 ' + wk.completed + ' 段 · ' + link;
+  } else {
+    const ly = lastCard ? (Number(S.sessions.length ? S.sessions[S.sessions.length - 1].focusSec : 0) / 60) : 0;
+    text = '我在「远星航程」飞了 ' + Math.round(ly) + ' 光年 · ' + link;
+  }
   const done = function () { showToast('链接已复制，发给朋友就能一起飞。'); };
   if (navigator.clipboard && navigator.clipboard.writeText) {
     navigator.clipboard.writeText(text).then(done, function () { showToast(link); });
@@ -2528,7 +2561,8 @@ function cardFile() {
   return new Promise(function (resolve) {
     if (!lastCard) return resolve(null);
     lastCard.toBlob(function (b) {
-      resolve(b ? new File([b], '远星航程-航程卡.png', { type: 'image/png' }) : null);
+      const name = lastCardKind === 'captain' ? '远星航程-船长档案.png' : (lastCardKind === 'weekly' ? '远星航程-周报卡.png' : '远星航程-航程卡.png');
+      resolve(b ? new File([b], name, { type: 'image/png' }) : null);
     }, 'image/png');
   });
 }
@@ -2539,14 +2573,16 @@ async function shareVoyageCard() {
     return;
   }
   try {
-    await navigator.share({ files: [f], title: '远星航程', text: '刚完成一段航程' });
+    const text = lastCardKind === 'captain' ? '我的远星航程船长档案' : (lastCardKind === 'weekly' ? '我的远星航程周报' : '刚完成一段航程');
+    await navigator.share({ files: [f], title: '远星航程', text: text });
   } catch (e) { /* 用户取消 */ }
 }
 function saveVoyageCard() {
   if (!lastCard) return;
   const a = document.createElement('a');
   const now = new Date();
-  a.download = '远星航程-' + now.getFullYear() + pad2(now.getMonth() + 1) + pad2(now.getDate()) + '.png';
+  const base = lastCardKind === 'captain' ? '远星航程-船长档案' : (lastCardKind === 'weekly' ? '远星航程-周报卡' : '远星航程-航程卡');
+  a.download = base + '-' + now.getFullYear() + pad2(now.getMonth() + 1) + pad2(now.getDate()) + '.png';
   a.href = lastCard.toDataURL('image/png');
   a.click();
   showToast('航程卡已保存，可在相册或下载目录里找到');
@@ -2712,6 +2748,21 @@ function titleState() {
   const frac = next ? clamp((min - cur.need) / (next.need - cur.need), 0, 1) : 1;
   return { idx: idx, cur: cur, next: next, min: min, frac: frac };
 }
+const TITLE_SIGILS = [
+  { id: 'streak', name: '长航', cond: '连续 7 天', get: function (m) { return m.bestStreak >= 7; } },
+  { id: 'deep', name: '深潜', cond: '单段 45 分钟', get: function (m) { return m.maxSegMin >= 45; } },
+  { id: 'mission', name: '任务', cond: '完成 3 个任务', get: function (m) { return m.missionsDone >= 3; } }
+];
+function titleSigilState() {
+  const m = computeMetrics();
+  return TITLE_SIGILS.map(function (s) { return { id: s.id, name: s.name, cond: s.cond, on: !!s.get(m) }; });
+}
+function hexToRgb(hex) {
+  hex = String(hex || '').replace('#', '');
+  if (hex.length === 3) hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+  const n = parseInt(hex, 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
 function paintTitle(el, t) {
   if (!el) return;
   el.textContent = t.name;
@@ -2737,6 +2788,10 @@ function titleNextText(st) {
 function renderTitles() {
   const st = titleState();
   if (S.titleSeen == null) S.titleSeen = st.idx;
+  const rgb = hexToRgb(st.cur.color);
+  window.__titleRGB = rgb;
+  document.documentElement.style.setProperty('--title-color', st.cur.color);
+  document.documentElement.style.setProperty('--title-rgb', rgb.join(','));
   const now = $('#titleNow'), meta = $('#titleMeta'), lv = $('#titleLv'), bar = $('#titleBar');
   const big = $('#titleBig'), en = $('#titleEn'), sub = $('#titleSub'), track = $('#titleTrack');
   const next2 = $('#titleNext2'), rank = $('#titleRank'), ladder = $('#titleLadder');
@@ -2756,6 +2811,15 @@ function renderTitles() {
   }
   if (next2) next2.textContent = titleNextText(st);
   if (rank) rank.textContent = 'TITLE ' + (st.idx + 1) + ' / ' + TITLE_TIERS.length;
+  const sigils = titleSigilState();
+  const dotRow = $('#titleSigils');
+  if (dotRow) dotRow.innerHTML = sigils.map(function (s) {
+    return '<span class="title-sigil' + (s.on ? ' is-on' : '') + '" title="' + s.name + ' · ' + s.cond + '"></span>';
+  }).join('');
+  const sigilRow = $('#titleSigilRow');
+  if (sigilRow) sigilRow.innerHTML = sigils.map(function (s) {
+    return '<span class="title-sigil-chip' + (s.on ? ' is-on' : '') + '"><b>' + s.name + '</b><span>' + s.cond + '</span></span>';
+  }).join('');
   if (ladder) {
     ladder.style.setProperty('--title-now-color', st.cur.color);
     ladder.innerHTML = TITLE_TIERS.map(function (t, i) {
@@ -2803,9 +2867,9 @@ function renderShipPanel() {
     return '<span class="ship-tier' + (st.lv >= t.lv ? ' is-on' : '') + (st.lv === t.lv ? ' is-now' : '') + '">' +
       t.name + '</span>';
   }).join('');
-  const tag = $('#shipTag');
-  if (tag) {
-    tag.textContent = st.cur.name + ' · Lv.' + st.lv;
+  const tag = $('#shipTag'), tagText = $('#shipTagText');
+  if (tag && tagText) {
+    tagText.textContent = st.cur.name + ' · Lv.' + st.lv;
     tag.classList.toggle('is-high', st.lv >= 4);
   }
 }
@@ -3335,6 +3399,7 @@ function showWeeklyCard() {
   if (!S.sessions.length) { showToast('还没有航段，先飞一段再来生成周报。'); return; }
   const cvs = buildWeeklyCard();
   lastCard = cvs;
+  lastCardKind = 'weekly';
   lastCardSid = '';
   const memoRow = $('#cardMemoRow');
   if (memoRow) memoRow.hidden = true;
@@ -3344,6 +3409,171 @@ function showWeeklyCard() {
   lastTaskNote = note;
   const noteEl = $('#cardNote');
   if (noteEl) { noteEl.hidden = false; noteEl.textContent = note; }
+  $('#cardShare').style.display = (navigator.canShare ? 'inline-flex' : 'none');
+  const linkBtn = $('#cardLink');
+  if (linkBtn) linkBtn.onclick = copyVoyageLink;
+  $('#cardModal').classList.add('is-open');
+}
+
+function buildCaptainCard() {
+  const W = 1080, H = 1440;
+  const cvs = document.createElement('canvas');
+  cvs.width = W; cvs.height = H;
+  const ctx = cvs.getContext('2d');
+  const mono = 'ui-monospace, SFMono-Regular, "DejaVu Sans Mono", Menlo, monospace';
+  const serif = '"Songti SC", "Noto Serif CJK SC", "Source Han Serif SC", serif';
+  const sans = '"PingFang SC", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif';
+  const m = computeMetrics(), st = titleState(), ship = shipState();
+  const rgb = hexToRgb(st.cur.color), accent = 'rgb(' + rgb.join(',') + ')';
+  const titleFont = st.cur.font.indexOf('serif') >= 0 ? serif : sans;
+
+  const bg = ctx.createLinearGradient(0, 0, 0, H);
+  bg.addColorStop(0, '#0A1822');
+  bg.addColorStop(.48, '#050B12');
+  bg.addColorStop(1, '#04090E');
+  ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+
+  for (let i = 0; i < 90; i++) {
+    const x = (i * 137 + 37) % W, y = (i * 83 + 53) % H;
+    ctx.fillStyle = 'rgba(233,241,247,' + (0.025 + (i % 5) * 0.012) + ')';
+    ctx.fillRect(x, y, i % 7 === 0 ? 2 : 1, i % 7 === 0 ? 2 : 1);
+  }
+
+  const idx = Math.min(SECTORS.length - 1, m.sectorIdx);
+  const art = document.querySelector('img[data-sector="' + (idx + 1) + '"]');
+  const artH = 600;
+  if (art && art.complete && art.naturalWidth) {
+    const sw = art.naturalWidth, sh = art.naturalHeight;
+    const scale = Math.max(W / sw, artH / sh);
+    ctx.drawImage(art, (W - sw * scale) / 2, (artH - sh * scale) / 2, sw * scale, sh * scale);
+  }
+  const scrim = ctx.createLinearGradient(0, 260, 0, artH + 70);
+  scrim.addColorStop(0, 'rgba(5,10,17,0)');
+  scrim.addColorStop(.55, 'rgba(5,10,17,.62)');
+  scrim.addColorStop(.86, 'rgba(4,9,14,.96)');
+  scrim.addColorStop(1, '#04090E');
+  ctx.fillStyle = scrim; ctx.fillRect(0, 260, W, artH - 260 + 70);
+
+  ctx.fillStyle = 'rgba(233,241,247,.62)';
+  ctx.font = '400 20px ' + mono;
+  ctx.fillText('CAPTAIN ARCHIVE', 88, 102);
+  ctx.textAlign = 'right';
+  ctx.fillStyle = 'rgba(131,153,172,.7)';
+  ctx.fillText('远星航程 · 船长档案', W - 88, 102);
+  ctx.textAlign = 'left';
+
+  ctx.save();
+  ctx.shadowColor = 'rgba(' + rgb.join(',') + ',.55)';
+  ctx.shadowBlur = Math.max(10, 18 + st.idx * 5);
+  ctx.fillStyle = accent;
+  ctx.font = st.cur.weight + ' ' + (st.cur.size * 4) + 'px ' + titleFont;
+  ctx.fillText(st.cur.name, 84, 526);
+  ctx.restore();
+
+  ctx.fillStyle = 'rgba(' + rgb.join(',') + ',.72)';
+  ctx.font = '400 21px ' + mono;
+  ctx.fillText(st.cur.en + ' · TITLE ' + (st.idx + 1) + ' / ' + TITLE_TIERS.length, 88, 578);
+  ctx.fillStyle = 'rgba(233,241,247,.78)';
+  ctx.font = '400 25px ' + sans;
+  ctx.fillText(st.cur.sub, 88, 626);
+
+  const barX = 88, barY = 664, barW = W - 176;
+  ctx.fillStyle = 'rgba(233,241,247,.10)';
+  ctx.fillRect(barX, barY, barW, 7);
+  ctx.fillStyle = accent;
+  ctx.fillRect(barX, barY, barW * st.frac, 7);
+  ctx.fillStyle = 'rgba(131,153,172,.75)';
+  ctx.font = '400 18px ' + mono;
+  ctx.fillText(titleNextText(st).replace('累计专注 ', ''), 88, 700);
+
+  const stats = [
+    ['累计专注', titleMinutes(m.allMin)],
+    ['累计里程', Math.round(m.totalLy) + ' ly'],
+    ['当前舰体', ship.cur.name + ' Lv.' + ship.lv],
+    ['最长连续', m.bestStreak + ' 天'],
+    ['最佳航段', Math.round(m.maxSegMin) + ' 分钟'],
+    ['徽章', unlockedBadgeCount() + ' / ' + BADGES.length]
+  ];
+  stats.forEach(function (it, i) {
+    const x = 84 + (i % 3) * 304, y = i < 3 ? 770 : 868;
+    ctx.fillStyle = 'rgba(131,153,172,.78)';
+    ctx.font = '400 18px ' + sans;
+    ctx.fillText(it[0], x, y);
+    ctx.fillStyle = i === 0 ? accent : '#E9F1F7';
+    ctx.font = '400 30px ' + mono;
+    ctx.fillText(it[1], x, y + 40);
+  });
+
+  ctx.fillStyle = 'rgba(233,241,247,.10)';
+  ctx.fillRect(84, 928, W - 168, 1);
+
+  ctx.fillStyle = 'rgba(131,153,172,.78)';
+  ctx.font = '400 18px ' + sans;
+  ctx.fillText('航迹星图 · 最近 18 段', 88, 972);
+  const list = S.sessions.slice(-18);
+  const pts = [];
+  for (let i = 0; i < Math.max(1, list.length); i++) {
+    const x = 104 + (list.length > 1 ? i * (872 / (list.length - 1)) : 436);
+    const y = 1080 + Math.sin(i * 1.27 + 0.6) * 42 + ((i % 4) - 1.5) * 12;
+    pts.push([x, y]);
+  }
+  ctx.strokeStyle = 'rgba(' + rgb.join(',') + ',.24)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  pts.forEach(function (p, i) { if (i === 0) ctx.moveTo(p[0], p[1]); else ctx.lineTo(p[0], p[1]); });
+  ctx.stroke();
+  pts.forEach(function (p, i) {
+    ctx.fillStyle = i < pts.length - 1 || !list.length ? 'rgba(' + rgb.join(',') + ',.95)' : 'rgba(131,153,172,.55)';
+    ctx.beginPath(); ctx.arc(p[0], p[1], i === pts.length - 1 ? 4.5 : 3, 0, 6.2832); ctx.fill();
+  });
+
+  ctx.fillStyle = 'rgba(131,153,172,.78)';
+  ctx.font = '400 18px ' + sans;
+  ctx.fillText('称号徽记', 88, 1214);
+  titleSigilState().forEach(function (s, i) {
+    const x = 104 + i * 304, y = 1252;
+    ctx.save();
+    ctx.translate(x, y); ctx.rotate(Math.PI / 4);
+    ctx.fillStyle = s.on ? accent : 'rgba(131,153,172,.4)';
+    ctx.fillRect(-4, -4, 8, 8);
+    if (s.on) { ctx.shadowColor = accent; ctx.shadowBlur = 10; ctx.fillRect(-4, -4, 8, 8); }
+    ctx.restore();
+    ctx.fillStyle = s.on ? 'rgba(233,241,247,.9)' : 'rgba(131,153,172,.55)';
+    ctx.font = '400 19px ' + mono;
+    ctx.fillText(s.name, x + 18, y + 7);
+    ctx.fillStyle = 'rgba(131,153,172,.65)';
+    ctx.font = '400 16px ' + sans;
+    ctx.fillText(s.cond, x + 18, y + 32);
+  });
+
+  ctx.fillStyle = 'rgba(131,153,172,.58)';
+  ctx.font = '400 18px ' + mono;
+  ctx.fillText('FOCUS = DISTANCE', 88, 1380);
+  ctx.textAlign = 'right';
+  ctx.fillStyle = 'rgba(' + rgb.join(',') + ',.7)';
+  ctx.fillText('YUANXING VOYAGE · ' + dateCN(Date.now()), W - 88, 1380);
+  ctx.textAlign = 'left';
+  ctx.strokeStyle = 'rgba(' + rgb.join(',') + ',.34)';
+  ctx.lineWidth = 1;
+  roundRectPath(ctx, 48, 48, W - 96, H - 96, 12); ctx.stroke();
+  ctx.strokeStyle = 'rgba(' + rgb.join(',') + ',.10)';
+  roundRectPath(ctx, 60, 60, W - 120, H - 120, 9); ctx.stroke();
+  return cvs;
+}
+
+function showCaptainCard() {
+  if (!S.sessions.length && !S.missions.length) {
+    showToast('还没有航程，先飞一段再生成船长档案。');
+    return;
+  }
+  const cvs = buildCaptainCard();
+  lastCard = cvs;
+  lastCardKind = 'captain';
+  lastCardSid = '';
+  const memoRow = $('#cardMemoRow'), noteEl = $('#cardNote');
+  if (memoRow) memoRow.hidden = true;
+  if (noteEl) noteEl.hidden = true;
+  $('#cardImg').src = cvs.toDataURL('image/png');
   $('#cardShare').style.display = (navigator.canShare ? 'inline-flex' : 'none');
   const linkBtn = $('#cardLink');
   if (linkBtn) linkBtn.onclick = copyVoyageLink;
@@ -5923,7 +6153,10 @@ function bindEvents() {
   const cardModal = $('#cardModal');
   if (cardModal) {
     $('#cardClose').addEventListener('click', closeVoyageCard);
-    $('#cardSave').addEventListener('click', saveVoyageCard);
+    const titleCardBtn = $('#titleCardBtn');
+  if (titleCardBtn) titleCardBtn.addEventListener('click', showCaptainCard);
+
+  $('#cardSave').addEventListener('click', saveVoyageCard);
     $('#cardShare').addEventListener('click', shareVoyageCard);
     cardModal.addEventListener('click', function (e) {
       if (e.target === cardModal) closeVoyageCard();
@@ -6095,11 +6328,12 @@ function initScene() {
     ctx.rotate(bank * Math.PI / 180);
 
     const flick = 0.72 + Math.sin(t * (cruise ? 12.4 : 9.1)) * 0.1 + Math.sin(t * 15.3) * 0.06;
+    const trs = (window.__titleRGB || [240, 163, 62]).join(',');
     const gR = L * (cruise ? 0.26 + spd * 0.019 : 0.24) * flick;
     const rg = ctx.createRadialGradient(-L * 0.5, 0, 0, -L * 0.5, 0, gR);
     rg.addColorStop(0, 'rgba(255,197,120,.55)');
-    rg.addColorStop(0.35, 'rgba(240,163,62,.22)');
-    rg.addColorStop(1, 'rgba(240,163,62,0)');
+    rg.addColorStop(0.35, 'rgba(' + trs + ',.22)');
+    rg.addColorStop(1, 'rgba(' + trs + ',0)');
     ctx.fillStyle = rg;
     ctx.beginPath(); ctx.arc(-L * 0.5, 0, gR, 0, 6.2832); ctx.fill();
 
@@ -6120,9 +6354,9 @@ function initScene() {
 
       const tg = ctx.createLinearGradient(-L * 0.5, 0, -L * 0.5 - plume, 0);
       tg.addColorStop(0, 'rgba(255,214,150,' + (0.30 + 0.26 * k).toFixed(3) + ')');
-      tg.addColorStop(0.35, 'rgba(240,163,62,' + (0.14 + 0.16 * k).toFixed(3) + ')');
+      tg.addColorStop(0.35, 'rgba(' + trs + ',' + (0.14 + 0.16 * k).toFixed(3) + ')');
       tg.addColorStop(0.72, 'rgba(217,91,68,' + (0.05 + 0.07 * k).toFixed(3) + ')');
-      tg.addColorStop(1, 'rgba(240,163,62,0)');
+      tg.addColorStop(1, 'rgba(' + trs + ',0)');
       ctx.fillStyle = tg;
       ctx.beginPath();
       ctx.moveTo(-L * 0.5, -wBase);
