@@ -78,6 +78,7 @@ h1,h2,h3,h4{font-family:var(--font-serif);font-weight:600;letter-spacing:.01em;m
   transition:color .15s linear,background .15s linear}
 .rail-link svg{width:19px;height:19px;stroke:currentColor;stroke-width:1.4;fill:none}
 .rail-link[aria-current="page"]{color:var(--beacon);background:rgba(240,163,62,.07)}
+.is-ui-hidden{display:none!important}
 .rail-link[aria-current="page"]::before{content:"";position:absolute;left:0;top:50%;width:2px;height:16px;
   margin-top:-8px;background:var(--beacon)}
 @media (max-width:899px){
@@ -266,6 +267,11 @@ body.is-docked .dial-state::before{opacity:1;animation:live-blink 2.6s ease-in-o
 .readout strong{display:block;margin-top:5px;font-family:var(--font-mono);font-size:16px;
   font-weight:500;font-variant-numeric:tabular-nums;letter-spacing:.02em}
 .ambient-row{margin-top:18px}
+.next-advice{display:flex;align-items:center;gap:10px;margin-top:12px;padding:10px 2px 0;
+  border-top:1px solid rgba(var(--title-rgb,240,163,62),.14);font-size:12px;line-height:1.55;color:var(--dust)}
+.next-advice .advice-key{flex:none;font-size:9px;letter-spacing:.12em;color:var(--title-color,var(--beacon))}
+.next-advice .advice-text{flex:1;min-width:0}
+.next-advice .mini-btn{flex:none;min-width:0;min-height:32px;padding:0 2px;color:var(--title-color,var(--beacon));font-size:12px}
 .seg{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--steel-soft);
   border:1px solid var(--steel-soft)}
 .seg button{min-height:42px;background:var(--hull);border:0;color:var(--dust);cursor:pointer;
@@ -1215,6 +1221,12 @@ body.theme-cb{--beacon:#58B6E0;--beacon-deep:#1D5D78;--flare:#D97AB2}
               <span>已记录中断 · <b class="mono" id="holdLeft">90</b> 秒内可接回</span>
             </div>
             <button class="btn-line" id="holdBtn" type="button">接回航程</button>
+          </div>
+
+          <div class="next-advice" id="nextAdvice" hidden>
+            <span class="advice-key mono">NEXT</span>
+            <span class="advice-text" id="adviceText"></span>
+            <button class="mini-btn" id="adviceApply" type="button">采用</button>
           </div>
 
           <div class="actions">
@@ -2190,6 +2202,7 @@ function releaseWake() {
 }
 
 function startTimer() {
+  clearNextAdvice();
   const planned = S.settings.duration * 60;
   S.active = {
     plannedSec: planned,
@@ -2242,6 +2255,7 @@ function resumeTimer() {
 }
 function finishTimer(completed, reason, opts) {
   const quiet = !!(opts && opts.quiet);
+  const stageBefore = uiStage();
   const a = S.active;
   if (!a) return;
   const beforeIdx = computeMetrics().sectorIdx;
@@ -2286,6 +2300,7 @@ function finishTimer(completed, reason, opts) {
   stopAmbient(false);
   releaseWake();
   const m = computeMetrics();
+  applyUiStage(uiStage() > stageBefore);
   renderAll();
   setTimeout(flushPendingCloudSync, 600);
   checkShipUpgrade();
@@ -2303,10 +2318,13 @@ function finishTimer(completed, reason, opts) {
         showToast('抵达 · 本段 +' + Math.round(focusSec / 60) + ' ly · ' + sector.name);
       }
     }, 560);
-  } else if (!quiet) {
-    playCue('abort');
-    notifySystem('紧急返航', (reason || '离开驾驶位') + ' · 专注 ' + fmtClock(focusSec));
-    showToast((reason ? reason : '紧急返航') + ' · 本段不计里程，专注 ' + fmtClock(focusSec) + ' 已记入日志');
+  } else {
+    if (!quiet) {
+      playCue('abort');
+      notifySystem('紧急返航', (reason || '离开驾驶位') + ' · 专注 ' + fmtClock(focusSec));
+      showToast((reason ? reason : '紧急返航') + ' · 本段不计里程，专注 ' + fmtClock(focusSec) + ' 已记入日志');
+    }
+    setNextAdvice(reason || '其他');
   }
 }
 /* ---------- 航程卡：抵达后生成一张可保存的海报 ---------- */
@@ -2785,6 +2803,51 @@ function titleNextText(st) {
     ? total + ' · 再航 ' + titleMinutes(st.next.need - st.min) + ' 可晋升'
     : total + ' · 已达最高称号';
 }
+let nextAdvicePlan = null;
+function adviceTip(reason) {
+  const tips = {
+    '消息打断': { min: 15, tip: '把手机翻面或放到另一个房间，先飞 15 分钟。' },
+    '走神': { min: 10, tip: '把目标缩到一道题或一页，先飞 10 分钟。' },
+    '被人打断': { min: 20, tip: '换 20 分钟短段，提前跟身边人说一声。' },
+    '主动休息': { min: 15, tip: '这是主动休息，先去休整 10 分钟，再飞 15 分钟。' }
+  };
+  return tips[reason] || { min: 15, tip: '先飞 15 分钟短段，把节奏接回来。' };
+}
+function advicePattern(reason) {
+  const since = Date.now() - 14 * 86400000;
+  const aborts = S.sessions.filter(function (s) { return !s.completed && s.end >= since; });
+  const reasonCount = {}, hourCount = {};
+  aborts.forEach(function (s) {
+    reasonCount[s.reason || '其他'] = (reasonCount[s.reason || '其他'] || 0) + 1;
+    const h = new Date(s.end || s.start || Date.now()).getHours();
+    hourCount[h] = (hourCount[h] || 0) + 1;
+  });
+  let topReason = reason, topN = 0;
+  Object.keys(reasonCount).forEach(function (k) { if (reasonCount[k] > topN) { topN = reasonCount[k]; topReason = k; } });
+  let topHour = -1, topHourN = 0;
+  Object.keys(hourCount).forEach(function (k) { if (hourCount[k] > topHourN) { topHourN = hourCount[k]; topHour = Number(k); } });
+  const base = adviceTip(topReason);
+  let prefix = '';
+  if (topHourN >= 2 && topHour >= 0) prefix = '你最近常在 ' + pad2(topHour) + ':00 左右返航。';
+  return { min: base.min, text: prefix + base.tip, reason: topReason, topHour: topHour };
+}
+function setNextAdvice(reason) {
+  nextAdvicePlan = advicePattern(reason || '其他');
+  renderNextAdvice();
+}
+function renderNextAdvice() {
+  const bar = $('#nextAdvice'), text = $('#adviceText'), btn = $('#adviceApply');
+  if (!bar) return;
+  if (!nextAdvicePlan) { bar.hidden = true; return; }
+  bar.hidden = false;
+  if (text) text.textContent = nextAdvicePlan.text;
+  if (btn) btn.textContent = '采用 ' + nextAdvicePlan.min + '′';
+}
+function clearNextAdvice() {
+  nextAdvicePlan = null;
+  renderNextAdvice();
+}
+
 function renderTitles() {
   const st = titleState();
   if (S.titleSeen == null) S.titleSeen = st.idx;
@@ -4799,9 +4862,44 @@ function renderSettings() {
 }
 
 /* ---------- 顶栏与侧栏 ---------- */
+function uiStage() {
+  const m = computeMetrics();
+  if (m.doneCount >= 3 || m.allMin >= 60) return 2;
+  if (m.allMin >= 1) return 1;
+  return 0;
+}
+function viewNeed(id) {
+  if (id === 'log') return 1;
+  if (id === 'stats' || id === 'badges') return 2;
+  return 0;
+}
+function viewAvailable(id) { return viewNeed(id) <= uiStage(); }
+let lastUiStage = null;
+function applyUiStage(announce) {
+  const stage = uiStage();
+  const was = lastUiStage;
+  $$('.rail-link').forEach(function (a) {
+    a.classList.toggle('is-ui-hidden', stage < viewNeed(a.dataset.view));
+  });
+  const rule = function (sel, need) {
+    $$(sel).forEach(function (el) { el.classList.toggle('is-ui-hidden', stage < need); });
+  };
+  rule('#titleMeta,#titleSigils,.title-gauge,.daily-row,.mode-seg', 1);
+  rule('.ambient-row,#deckToggle,#routePanel,.star-row', 2);
+  document.body.dataset.uiStage = String(stage);
+  if (announce && was != null && stage > was) {
+    setTimeout(function () {
+      showToast(stage === 1 ? '航行日志已解锁；称号进度也开始显示。' : '统计、成就与完整控制已解锁。');
+    }, 900);
+  }
+  lastUiStage = stage;
+  if (stage >= 1) setTimeout(syncModeIndicator, 0);
+  return stage;
+}
 function currentView() {
   const raw = (location.hash || '#voyage').replace('#', '');
-  return ['voyage', 'missions', 'log', 'stats', 'badges', 'settings'].indexOf(raw) >= 0 ? raw : 'voyage';
+  const id = ['voyage', 'missions', 'log', 'stats', 'badges', 'settings'].indexOf(raw) >= 0 ? raw : 'voyage';
+  return viewAvailable(id) ? id : 'voyage';
 }
 
 function renderMeta() {
@@ -4827,6 +4925,7 @@ function renderMeta() {
 }
 
 function setView(id) {
+  if (!viewAvailable(id)) id = 'voyage';
   $$('.view').forEach(function (v) {
     v.classList.toggle('is-active', v.id === 'view-' + id);
   });
@@ -5513,6 +5612,8 @@ function renderAll() {
   renderLog();
   renderBadges();
   renderSettings();
+  applyUiStage(false);
+  renderNextAdvice();
   if (currentView() === 'stats') renderStats();
 }
 
@@ -6155,6 +6256,17 @@ function bindEvents() {
     $('#cardClose').addEventListener('click', closeVoyageCard);
     const titleCardBtn = $('#titleCardBtn');
   if (titleCardBtn) titleCardBtn.addEventListener('click', showCaptainCard);
+
+  const adviceApply = $('#adviceApply');
+  if (adviceApply) adviceApply.addEventListener('click', function () {
+    if (!nextAdvicePlan) return;
+    S.settings.duration = nextAdvicePlan.min;
+    save();
+    renderSettings();
+    renderVoyage();
+    renderNextAdvice();
+    showToast('下一段已设为 ' + nextAdvicePlan.min + ' 分钟，准备好了就起飞。');
+  });
 
   $('#cardSave').addEventListener('click', saveVoyageCard);
     $('#cardShare').addEventListener('click', shareVoyageCard);
