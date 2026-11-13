@@ -3635,25 +3635,48 @@ function starMapClick(e) {
     (s.taskTitle ? ' · ' + s.taskTitle : '') + (s.note ? ' · “' + s.note + '”' : '');
 }
 
+function normalizeFleetRow(row) {
+  return {
+    id: row.user_id || row.id || '',
+    nick: row.nick || '舰长',
+    ly: Math.max(0, Number(row.ly) || 0),
+    week: Math.max(0, Number(row.week) || 0),
+    ach: Math.max(0, Number(row.ach) || 0),
+    ship: typeof row.ship === 'string' ? row.ship : '探针舰',
+    fleet_code: row.fleet_code || '',
+    is_test: !!row.is_test
+  };
+}
+
+function fleetRows() {
+  const map = {};
+  leaderboardRows.forEach(function (row) {
+    const item = normalizeFleetRow(row);
+    if (item.id) map[item.id] = item;
+  });
+  fleetMembers.forEach(function (row) {
+    const item = normalizeFleetRow(row);
+    if (item.id) map[item.id] = Object.assign({}, map[item.id] || {}, item);
+  });
+  return Object.keys(map).map(function (k) { return map[k]; })
+    .filter(function (row) { return !row.is_test; })
+    .sort(function (a, b) {
+      return (b.week || 0) - (a.week || 0) || (b.ach || 0) - (a.ach || 0) || (b.ly || 0) - (a.ly || 0);
+    });
+}
+
 function renderFleetList() {
   const panel = $('#fleetPanel'), list = $('#fleetList'), meta = $('#fleetMeta');
   if (!panel) return;
-  if (!cloudUser) { panel.hidden = true; return; }
   panel.hidden = false;
-  if (isTestAccount()) {
-    if (meta) meta.textContent = '测试账号 · 不参与排行榜';
-    if (list) list.innerHTML = '<div class="fleet-empty">这个账号只用来验收全部成就，不会出现在队友的排行榜里。</div>';
-    return;
-  }
-  const code = (S.settings.fleetCode || '').trim().toUpperCase();
-  if (meta) meta.textContent = code ? '编队 ' + code + ' · ' + fleetMembers.length + ' 人' : '公共航道 · ' + fleetMembers.length + ' 人在航';
+  const rows = fleetRows();
+  if (meta) meta.textContent = (isTestAccount() ? '测试账号 · 不上榜 · ' : '') + '全体舰队 · ' + rows.length + ' 人';
   if (!list) return;
-  if (!code) {
-    list.innerHTML = '<div class="fleet-empty">设置一个 6 位编队码，才会显示队友名单。公共航道只统计人数，不列名字。</div>';
+  if (!rows.length) {
+    list.innerHTML = '<div class="fleet-empty">还没有人上榜。登录并完成一段航程就会出现在这里；不登录也能看这张榜。</div>';
     return;
   }
-  if (!fleetMembers.length) { list.innerHTML = '<div class="fleet-empty">还没有队友在线。把编队码发给同学，一起航行。</div>'; return; }
-  list.innerHTML = fleetMembers.map(function (m, i) {
+  list.innerHTML = rows.map(function (m, i) {
     const me = cloudUser && m.id === cloudUser.id;
     return '<div class="fleet-row">' +
       '<span class="fleet-rank">#' + (i + 1) + '</span>' +
@@ -3670,6 +3693,7 @@ function renderBadges() {
   renderShipPanel();
   renderStarMap();
   renderStarDex();
+  loadLeaderboard();
   renderFleetList();
   const unlocked = BADGES.filter(function (b) { return b.get(m) >= b.target; }).length;
   $('#badgeCount').textContent = '已解锁 ' + unlocked + ' · 待解锁 ' + (BADGES.length - unlocked);
@@ -3699,6 +3723,7 @@ const DEFAULT_CLOUD_CFG = {
   key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpyZXRoaGxwZWlraGltenl3aW16Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTM5Nzc4NDcsImV4cCI6MjEwOTU1Mzg0N30.1g6b0OywWjNP9ncGk45-4SVpVIJ_FWnfrH0cORIqhxg'
 };
 const CLOUD_TABLE = 'voyages';
+const LEADERBOARD_TABLE = 'leaderboard';
 const TEST_ACCOUNT_ID = 'b142b58f-5085-42dd-a80f-67a38640edf3';
 const CLOUD_SDK = 'https://fastly.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js';
 let cloudCfg = null;
@@ -3795,6 +3820,7 @@ function connectCloud(cb) {
       if (cb) cb(false);
       return;
     }
+    loadLeaderboard(true);
     cloudClient.auth.onAuthStateChange(function (evt, sess) {
       const was = cloudUser && cloudUser.id;
       cloudUser = sess ? sess.user : null;
@@ -3862,6 +3888,7 @@ function pushCloud(quiet, doneText, busyText) {
       return false;
     }
     cloudSyncAt = Date.now();
+    scheduleLeaderboardPush();
     const okText = doneText || ((quiet ? '已自动同步 ' : '已上传 ') + nowLabel());
     setSyncStatus('ok', '已同步 ' + nowLabel(), okText, 'ok');
     return true;
@@ -3888,6 +3915,7 @@ function pullCloud(silent) {
     }
     const ok = adoptCloudData(res.data.data, res.data.updated_at);
     if (ok) {
+      scheduleLeaderboardPush();
       setSyncStatus('ok', '已同步 ' + nowLabel(), '已从云端恢复 ' + S.sessions.length + ' 段航程', 'ok');
     } else {
       setSyncStatus('wait', '未同步', '正在计时或休整，先结束再同步', 'bad');
@@ -3897,13 +3925,63 @@ function pullCloud(silent) {
 
 let fleetCh = null;
 let fleetMembers = [];
+let leaderboardRows = [];
+let leaderboardAt = 0;
+let leaderboardTimer = null;
 function trackFleet() {
   if (isTestAccount()) return;
+  if (cloudUser) scheduleLeaderboardPush();
   if (!fleetCh || !cloudUser || !cloudChannelsReady()) return;
   try {
     fleetCh.track({ nick: (S.settings.fleetNick || '舰长'), ly: todayLy(), week: weekLy(),
       ach: unlockedBadgeCount(), ship: shipState().cur.name, at: Date.now() });
   } catch (e) {}
+}
+
+function leaderboardPayload() {
+  return {
+    user_id: cloudUser.id,
+    nick: (S.settings.fleetNick || '舰长').slice(0, 24),
+    ly: todayLy(), week: weekLy(), ach: unlockedBadgeCount(),
+    ship: shipState().cur.name,
+    fleet_code: (S.settings.fleetCode || '').trim().toUpperCase(),
+    is_test: false,
+    updated_at: new Date().toISOString()
+  };
+}
+
+function pushLeaderboard() {
+  if (!cloudClient || !cloudUser || isTestAccount()) return Promise.resolve(false);
+  return cloudClient.from(LEADERBOARD_TABLE).upsert(leaderboardPayload(), { onConflict: 'user_id' })
+    .then(function (res) { return !res.error; })
+    .catch(function () { return false; });
+}
+
+function scheduleLeaderboardPush() {
+  if (!cloudClient || !cloudUser || isTestAccount()) return;
+  if (leaderboardTimer) clearTimeout(leaderboardTimer);
+  leaderboardTimer = setTimeout(function () {
+    leaderboardTimer = null;
+    pushLeaderboard();
+  }, 3000);
+}
+
+function loadLeaderboard(force) {
+  if (!cloudClient) return;
+  if (!force && Date.now() - leaderboardAt < 30000) return;
+  cloudClient.from(LEADERBOARD_TABLE)
+    .select('user_id,nick,ly,week,ach,ship,fleet_code,is_test,updated_at')
+    .eq('is_test', false)
+    .order('week', { ascending: false })
+    .order('ach', { ascending: false })
+    .limit(50)
+    .then(function (res) {
+      if (res.error) return;
+      leaderboardRows = (res.data || []).map(normalizeFleetRow);
+      leaderboardAt = Date.now();
+      renderFleet();
+    })
+    .catch(function () {});
 }
 function cloudChannelsReady() { return !!cloudClient; }
 function todayLy() {
@@ -3934,12 +4012,14 @@ function fleetChannelName() {
   return 'yuanxing-fleet-' + (code || 'global');
 }
 function renderFleet(n) {
+  const total = Math.max(n || 0, leaderboardRows.length);
   const tag = $('#fleetTag');
   if (tag) {
-    if (!n) tag.hidden = true;
+    if (!total) tag.hidden = true;
     else {
       tag.hidden = false;
-      tag.textContent = (S.settings.fleetCode ? '编队 ' : '此刻 ') + n + ' 人在航行';
+      const code = (S.settings.fleetCode || '').trim().toUpperCase();
+      tag.textContent = (code ? '编队 ' + code + ' · ' : '全体 ') + total + ' 人在航';
     }
   }
   renderFleetList();
@@ -4087,6 +4167,7 @@ function afterSignIn() {
   if (now - cloudAfterSignInAt < 1500) return;
   cloudAfterSignInAt = now;
   setSyncStatus('syncing', '正在同步', '正在读取云端…');
+  scheduleLeaderboardPush();
   ensureCloudProfile(cloudUser).then(function (name) {
     if (name && name !== cloudAccountName) { cloudAccountName = name; renderCloud(); }
     if (isTestAccount()) { teardownPresence(); renderFleet(0); }
