@@ -278,6 +278,17 @@ body.is-docked .dial-state::before{opacity:1;animation:live-blink 2.6s ease-in-o
 .first-run .fr-n{flex:none;font-size:9px;letter-spacing:.1em;color:var(--title-color,var(--beacon));padding-top:2px}
 .first-run b{display:block;margin-top:2px;color:var(--star);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .first-run em{font-style:normal;color:var(--dust)}
+.login-guide{margin-top:14px;padding:13px 2px 12px;border-top:1px solid rgba(var(--title-rgb,240,163,62),.16)}
+.login-guide .lg-kicker{font-size:9px;letter-spacing:.13em;color:var(--title-color,var(--beacon))}
+.login-guide h3{margin:8px 0 0;font-family:var(--font-serif);font-size:16px;font-weight:600;line-height:1.5}
+.login-guide p{margin:7px 0 0;font-size:11.5px;line-height:1.8;color:var(--dust)}
+.login-guide .lg-steps{display:flex;flex-wrap:wrap;gap:5px 11px;margin-top:9px;font-family:var(--font-mono);
+  font-size:9.5px;letter-spacing:.04em;color:var(--dust-dim)}
+.login-guide .lg-steps span{display:inline-flex;align-items:center;gap:5px}
+.login-guide .lg-steps i{font-style:normal;color:var(--title-color,var(--beacon))}
+.login-guide .lg-acts{display:flex;flex-wrap:wrap;align-items:center;gap:14px;margin-top:11px}
+.login-guide .lg-go{color:var(--title-color,var(--beacon))}
+.login-guide .lg-skip{color:var(--dust-dim)}
 .resume-row{display:flex;align-items:center;gap:10px;margin-top:12px;padding:10px 2px 0;
   border-top:1px solid rgba(var(--title-rgb,240,163,62),.13);font-size:12px;line-height:1.55;color:var(--dust)}
 .resume-row .resume-key{flex:none;font-size:9px;letter-spacing:.12em;color:var(--title-color,var(--beacon))}
@@ -1211,6 +1222,21 @@ body.theme-cb{--beacon:#58B6E0;--beacon-deep:#1D5D78;--flare:#D97AB2}
             </div>
           </div>
 
+          <div class="login-guide" id="loginGuide" hidden>
+            <div class="lg-kicker mono">ACCOUNT · CLOUD</div>
+            <h3>登录后，航程才不会丢</h3>
+            <p>不登录，云端不会保存你的航程；本地虽然会留下，但换设备、清缓存或重装就会丢。</p>
+            <div class="lg-steps">
+              <span><i>01</i> 设置</span>
+              <span><i>02</i> 云端账号</span>
+              <span><i>03</i> 登录 / 注册</span>
+            </div>
+            <div class="lg-acts">
+              <button class="btn-line lg-go" id="loginGuideGo" type="button">去设置登录</button>
+              <button class="btn-line lg-skip" id="loginGuideSkip" type="button">先不登录</button>
+            </div>
+          </div>
+
           <div class="daily-row">
             <span class="mono" id="dailyRead">今日 0 / 120 分钟</span>
             <span class="daily-bar" aria-hidden="true"><i id="dailyBar"></i></span>
@@ -1942,7 +1968,8 @@ function defaultState() {
     frames: ['thin'],
     frame: 'thin',
     shipSeen: 1,
-    guideDone: false
+    guideDone: false,
+    loginGuideDone: false
   };
 }
 function migrateState(parsed) {
@@ -1957,6 +1984,8 @@ function migrateState(parsed) {
 
   base.currentTaskId = parsed.currentTaskId || null;
   base.shipSeen = Math.max(1, Number(parsed.shipSeen) || 1);
+  base.guideDone = !!parsed.guideDone;
+  base.loginGuideDone = !!parsed.loginGuideDone;
   base.mode = parsed.mode === 'rest' ? 'rest' : 'voyage';
   base.rest = parsed.rest && typeof parsed.rest === 'object' ? parsed.rest : null;
   base.active = parsed.active && typeof parsed.active === 'object' ? parsed.active : null;
@@ -2890,10 +2919,42 @@ function clearNextAdvice() {
   renderNextAdvice();
 }
 
+let loginGuideReady = false;
+function loginGuideNeeded() {
+  return !!(loginGuideReady && cloudCfg && !cloudUser && !S.loginGuideDone &&
+    !S.guideDone && !S.sessions.length && !S.active && !S.rest);
+}
+function renderLoginGuide() {
+  const box = $('#loginGuide');
+  if (box) box.hidden = !loginGuideNeeded();
+  renderFirstRun();
+}
+function skipLoginGuide() {
+  S.loginGuideDone = true;
+  save();
+  renderLoginGuide();
+  showToast('已跳过。之后在设置里可以随时登录。');
+}
+function goLoginGuide() {
+  S.loginGuideDone = true;
+  save();
+  renderLoginGuide();
+  location.hash = '#settings';
+  setView('settings');
+  showToast('在「云端账号」里输入账号和密码；没有账号可以直接注册。');
+  setTimeout(function () {
+    const group = $('#cloudGroup');
+    if (group) group.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setTimeout(function () {
+      const input = !$('#cloudAuth').hidden ? $('#cloudAccountName') : $('#cloudUrl');
+      if (input) { try { input.focus({ preventScroll: true }); } catch (e) { input.focus(); } }
+    }, 380);
+  }, 220);
+}
 function renderFirstRun() {
   const box = $('#firstRun');
   if (!box) return;
-  const hide = !!(S.guideDone || S.sessions.length || S.active || S.rest);
+  const hide = !!(S.guideDone || S.sessions.length || S.active || S.rest || !loginGuideReady || loginGuideNeeded());
   box.hidden = hide;
   if (hide) return;
   const dur = $('#frDur'), task = $('#frTask');
@@ -4431,7 +4492,10 @@ function adoptCloudData(data, updatedAt) {
     setCloudMsg($('#cloudSyncMsg'), '正在计时或休整，先结束再同步', 'bad');
     return false;
   }
+  const keepGuideDone = !!S.guideDone, keepLoginGuideDone = !!S.loginGuideDone;
   S = migrateState(data);
+  S.guideDone = keepGuideDone || !!S.guideDone;
+  S.loginGuideDone = keepLoginGuideDone || !!S.loginGuideDone;
   S.active = null;
   S.rest = null;
   if (S.mode === 'rest') S.mode = 'voyage';
@@ -4708,7 +4772,9 @@ function mergeVoyageData(remoteData) {
     stars: Math.max(syncNum(local.stars), syncNum(remote.stars)),
     frames: frames.length ? frames : ['thin'],
     frame: local.frame || remote.frame || 'thin',
-    shipSeen: Math.max(syncNum(local.shipSeen) || 1, syncNum(remote.shipSeen) || 1)
+    shipSeen: Math.max(syncNum(local.shipSeen) || 1, syncNum(remote.shipSeen) || 1),
+    guideDone: !!(local.guideDone || remote.guideDone),
+    loginGuideDone: !!(local.loginGuideDone || remote.loginGuideDone)
   };
 }
 
@@ -4721,6 +4787,9 @@ function flushPendingCloudSync() {
 
 function afterSignIn() {
   if (!cloudClient || !cloudUser) return;
+  S.loginGuideDone = true;
+  renderLoginGuide();
+  renderFirstRun();
   const now = Date.now();
   if (now - cloudAfterSignInAt < 1500) return;
   cloudAfterSignInAt = now;
@@ -5768,6 +5837,7 @@ function renderAll() {
   renderSettings();
   applyUiStage(false);
   renderNextAdvice();
+  renderLoginGuide();
   renderFirstRun();
   renderResume();
   if (currentView() === 'stats') renderStats();
@@ -6426,6 +6496,11 @@ function bindEvents() {
 
   const resumeBtn = $('#resumeBtn');
   if (resumeBtn) resumeBtn.addEventListener('click', resumeLast);
+
+  const loginGuideGo = $('#loginGuideGo');
+  if (loginGuideGo) loginGuideGo.addEventListener('click', goLoginGuide);
+  const loginGuideSkip = $('#loginGuideSkip');
+  if (loginGuideSkip) loginGuideSkip.addEventListener('click', skipLoginGuide);
 
   $('#cardSave').addEventListener('click', saveVoyageCard);
     $('#cardShare').addEventListener('click', shareVoyageCard);
@@ -7426,13 +7501,14 @@ function boot() {
 
   renderAll();
   setView(currentView());
+  setTimeout(function () { loginGuideReady = true; renderLoginGuide(); }, 1500);
   if (pendingDraft) setTimeout(function () { promptDraft(pendingDraft); }, 520);
 
   playIntro();
 
   if (!S.sessions.length && !S.missions.length) {
     setTimeout(function () {
-      showToast('按下「启动航程」开始第一段；中途切出页面会紧急返航。');
+      if (!loginGuideNeeded()) showToast('按下「启动航程」开始第一段；中途切出页面会紧急返航。');
     }, 1700);
   }
 }
