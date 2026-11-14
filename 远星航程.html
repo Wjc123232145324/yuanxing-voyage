@@ -289,6 +289,12 @@ body.is-docked .dial-state::before{opacity:1;animation:live-blink 2.6s ease-in-o
 .login-guide .lg-acts{display:flex;flex-wrap:wrap;align-items:center;gap:14px;margin-top:11px}
 .login-guide .lg-go{color:var(--title-color,var(--beacon))}
 .login-guide .lg-skip{color:var(--dust-dim)}
+.login-tour{position:fixed;inset:0;z-index:35;pointer-events:none}
+.login-tour[hidden]{display:none}
+.login-tour .tour-panel{position:absolute;background:rgba(3,7,11,.72);pointer-events:auto;transition:background .2s}
+.login-tour .tour-ring{position:absolute;border:1.5px solid rgba(240,163,62,.9);border-radius:999px;pointer-events:none;
+  box-shadow:0 0 0 5px rgba(240,163,62,.10);animation:tourPulse 1.9s ease-in-out infinite}
+@keyframes tourPulse{0%,100%{box-shadow:0 0 0 5px rgba(240,163,62,.10)}50%{box-shadow:0 0 0 10px rgba(240,163,62,.03)}}
 .resume-row{display:flex;align-items:center;gap:10px;margin-top:12px;padding:10px 2px 0;
   border-top:1px solid rgba(var(--title-rgb,240,163,62),.13);font-size:12px;line-height:1.55;color:var(--dust)}
 .resume-row .resume-key{flex:none;font-size:9px;letter-spacing:.12em;color:var(--title-color,var(--beacon))}
@@ -1857,6 +1863,13 @@ body.theme-cb{--beacon:#58B6E0;--beacon-deep:#1D5D78;--flare:#D97AB2}
   </div>
 </div>
 <div class="warp-flash" id="warpFlash" aria-hidden="true"></div>
+<div class="login-tour" id="loginTour" hidden>
+  <div class="tour-panel" data-tour="top"></div>
+  <div class="tour-panel" data-tour="bottom"></div>
+  <div class="tour-panel" data-tour="left"></div>
+  <div class="tour-panel" data-tour="right"></div>
+  <div class="tour-ring" id="loginTourRing"></div>
+</div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script src="https://fastly.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js" defer></script>
@@ -2925,8 +2938,9 @@ function loginGuideNeeded() {
     !S.guideDone && !S.sessions.length && !S.active && !S.rest);
 }
 function renderLoginGuide() {
-  const box = $('#loginGuide');
-  if (box) box.hidden = !loginGuideNeeded();
+  const box = $('#loginGuide'), show = loginGuideNeeded();
+  if (box) box.hidden = !show;
+  if (show) showLoginTour(); else hideLoginTour();
   renderFirstRun();
 }
 function skipLoginGuide() {
@@ -2950,6 +2964,53 @@ function goLoginGuide() {
       if (input) { try { input.focus({ preventScroll: true }); } catch (e) { input.focus(); } }
     }, 380);
   }, 220);
+}
+function positionLoginTour() {
+  const tour = $('#loginTour'), target = $('#loginGuide');
+  if (!tour || !target || tour.hidden || target.hidden) return;
+  const rect = target.getBoundingClientRect();
+  const vw = window.innerWidth, vh = window.innerHeight, pad = 10;
+  const top = Math.max(0, rect.top - pad);
+  const left = Math.max(0, rect.left - pad);
+  const right = Math.min(vw, rect.right + pad);
+  const bottom = Math.min(vh, rect.bottom + pad);
+  const set = function (side, css) {
+    const el = tour.querySelector('[data-tour="' + side + '"]');
+    if (el) el.style.cssText = 'position:absolute;background:rgba(3,7,11,.72);pointer-events:auto;' + css;
+  };
+  set('top', 'left:0;top:0;width:100%;height:' + top + 'px');
+  set('bottom', 'left:0;top:' + bottom + 'px;width:100%;height:' + Math.max(0, vh - bottom) + 'px');
+  set('left', 'left:0;top:' + top + 'px;width:' + left + 'px;height:' + Math.max(0, bottom - top) + 'px');
+  set('right', 'left:' + right + 'px;top:' + top + 'px;width:' + Math.max(0, vw - right) + 'px;height:' + Math.max(0, bottom - top) + 'px');
+  const ring = $('#loginTourRing'), btn = $('#loginGuideGo');
+  if (ring && btn) {
+    const br = btn.getBoundingClientRect();
+    ring.style.left = (br.left - 5) + 'px';
+    ring.style.top = (br.top - 5) + 'px';
+    ring.style.width = Math.max(0, br.width + 10) + 'px';
+    ring.style.height = Math.max(0, br.height + 10) + 'px';
+  }
+}
+let loginTourScrolled = false;
+function showLoginTour() {
+  const tour = $('#loginTour'), target = $('#loginGuide');
+  if (!tour || !target) return;
+  tour.hidden = false;
+  if (!loginTourScrolled) {
+    const r = target.getBoundingClientRect();
+    if (r.top < 12 || r.bottom > window.innerHeight - 12) {
+      target.scrollIntoView({ block: 'center' });
+      loginTourScrolled = true;
+    }
+  }
+  positionLoginTour();
+  requestAnimationFrame(positionLoginTour);
+  setTimeout(positionLoginTour, 80);
+}
+function hideLoginTour() {
+  const tour = $('#loginTour');
+  if (tour) tour.hidden = true;
+  loginTourScrolled = false;
 }
 function renderFirstRun() {
   const box = $('#firstRun');
@@ -6501,6 +6562,8 @@ function bindEvents() {
   if (loginGuideGo) loginGuideGo.addEventListener('click', goLoginGuide);
   const loginGuideSkip = $('#loginGuideSkip');
   if (loginGuideSkip) loginGuideSkip.addEventListener('click', skipLoginGuide);
+  window.addEventListener('resize', positionLoginTour);
+  window.addEventListener('scroll', positionLoginTour, { passive: true });
 
   $('#cardSave').addEventListener('click', saveVoyageCard);
     $('#cardShare').addEventListener('click', shareVoyageCard);
