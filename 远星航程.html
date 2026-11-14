@@ -272,6 +272,25 @@ body.is-docked .dial-state::before{opacity:1;animation:live-blink 2.6s ease-in-o
 .next-advice .advice-key{flex:none;font-size:9px;letter-spacing:.12em;color:var(--title-color,var(--beacon))}
 .next-advice .advice-text{flex:1;min-width:0}
 .next-advice .mini-btn{flex:none;min-width:0;min-height:32px;padding:0 2px;color:var(--title-color,var(--beacon));font-size:12px}
+.first-run{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px;padding:10px 2px 0;
+  border-top:1px solid rgba(var(--title-rgb,240,163,62),.13);font-size:10.5px;line-height:1.45;color:var(--dust)}
+.first-run .fr-step{display:flex;gap:7px;min-width:0;align-items:flex-start}
+.first-run .fr-n{flex:none;font-size:9px;letter-spacing:.1em;color:var(--title-color,var(--beacon));padding-top:2px}
+.first-run b{display:block;margin-top:2px;color:var(--star);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.first-run em{font-style:normal;color:var(--dust)}
+.resume-row{display:flex;align-items:center;gap:10px;margin-top:12px;padding:10px 2px 0;
+  border-top:1px solid rgba(var(--title-rgb,240,163,62),.13);font-size:12px;line-height:1.55;color:var(--dust)}
+.resume-row .resume-key{flex:none;font-size:9px;letter-spacing:.12em;color:var(--title-color,var(--beacon))}
+.resume-row .resume-text{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.resume-row .mini-btn{flex:none;min-width:0;min-height:32px;padding:0 2px;color:var(--title-color,var(--beacon));font-size:12px}
+.week-check{margin:18px 0 2px;padding:14px 2px 16px;border-top:1px solid rgba(240,163,62,.14);
+  border-bottom:1px solid rgba(30,55,72,.55)}
+.week-check-hd{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+.week-check-hd h2{margin:0;font-family:var(--font-serif);font-size:17px;font-weight:600;letter-spacing:.04em}
+.week-check-hd span{font-family:var(--font-mono);font-size:10px;letter-spacing:.08em;color:var(--dust-dim)}
+.week-check-sum{margin:11px 0 0;font-size:13px;line-height:1.85;color:var(--star)}
+.week-check-exp{display:flex;gap:9px;margin:9px 0 0;font-size:12px;line-height:1.7;color:var(--dust)}
+.week-check-exp b{flex:none;color:var(--title-color,var(--beacon));font-weight:500}
 .seg{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--steel-soft);
   border:1px solid var(--steel-soft)}
 .seg button{min-height:42px;background:var(--hull);border:0;color:var(--dust);cursor:pointer;
@@ -1197,6 +1216,12 @@ body.theme-cb{--beacon:#58B6E0;--beacon-deep:#1D5D78;--flare:#D97AB2}
             <span class="daily-bar" aria-hidden="true"><i id="dailyBar"></i></span>
           </div>
 
+          <div class="first-run" id="firstRun" hidden>
+            <div class="fr-step"><span class="fr-n mono">01</span><span>航段<b id="frDur">25′</b></span></div>
+            <div class="fr-step"><span class="fr-n mono">02</span><span>任务<b id="frTask">可不选</b></span></div>
+            <div class="fr-step"><span class="fr-n mono">03</span><span>启动<b>下方起飞</b></span></div>
+          </div>
+
           <div class="ambient-row">
             <label style="display:block;font-size:11px;letter-spacing:.14em;color:var(--dust-dim);font-family:var(--font-mono);margin-bottom:7px">舱内环境声</label>
             <div class="seg" id="ambientSeg" role="group" aria-label="环境声">
@@ -1227,6 +1252,12 @@ body.theme-cb{--beacon:#58B6E0;--beacon-deep:#1D5D78;--flare:#D97AB2}
             <span class="advice-key mono">NEXT</span>
             <span class="advice-text" id="adviceText"></span>
             <button class="mini-btn" id="adviceApply" type="button">采用</button>
+          </div>
+
+          <div class="resume-row" id="resumeRow" hidden>
+            <span class="resume-key mono">RESUME</span>
+            <span class="resume-text" id="resumeText"></span>
+            <button class="mini-btn" id="resumeBtn" type="button">接着飞</button>
           </div>
 
           <div class="actions">
@@ -1378,6 +1409,15 @@ body.theme-cb{--beacon:#58B6E0;--beacon-deep:#1D5D78;--flare:#D97AB2}
       <section class="chart-card">
         <div class="panel-hd"><h2>本周 vs 上周</h2><span class="hint">周一到周日，只算完成航段</span></div>
         <div class="week-compare" id="weekCompare"></div>
+      </section>
+
+      <section class="week-check" aria-labelledby="weekCheckTitle">
+        <div class="week-check-hd">
+          <h2 id="weekCheckTitle">航行体检</h2>
+          <span id="checkRange"></span>
+        </div>
+        <p class="week-check-sum" id="checkSum">本周还没有足够的航段数据。</p>
+        <p class="week-check-exp"><b>实验</b><span id="checkExp">先飞一段 15 分钟。</span></p>
       </section>
 
       <div class="weekly-bar">
@@ -1901,7 +1941,8 @@ function defaultState() {
     stars: 0,
     frames: ['thin'],
     frame: 'thin',
-    shipSeen: 1
+    shipSeen: 1,
+    guideDone: false
   };
 }
 function migrateState(parsed) {
@@ -2203,6 +2244,7 @@ function releaseWake() {
 
 function startTimer() {
   clearNextAdvice();
+  S.guideDone = true;
   const planned = S.settings.duration * 60;
   S.active = {
     plannedSec: planned,
@@ -2848,6 +2890,58 @@ function clearNextAdvice() {
   renderNextAdvice();
 }
 
+function renderFirstRun() {
+  const box = $('#firstRun');
+  if (!box) return;
+  const hide = !!(S.guideDone || S.sessions.length || S.active || S.rest);
+  box.hidden = hide;
+  if (hide) return;
+  const dur = $('#frDur'), task = $('#frTask');
+  if (dur) dur.textContent = S.settings.duration + '′';
+  if (task) {
+    const t = currentTaskTitle();
+    task.textContent = t && t !== '未指派任务' ? t : '可不选';
+  }
+}
+function latestSession() {
+  let last = null;
+  S.sessions.forEach(function (s) {
+    if (!last || (s.end || 0) >= (last.end || 0)) last = s;
+  });
+  return last;
+}
+function renderResume() {
+  const row = $('#resumeRow');
+  if (!row) return;
+  const hide = !!(S.active || S.rest || nextAdvicePlan || !S.sessions.length);
+  row.hidden = hide;
+  if (hide) return;
+  const last = latestSession();
+  if (!last) { row.hidden = true; return; }
+  const mins = clamp(Math.round((last.plannedSec || last.focusSec || 1500) / 60), 5, 90);
+  const title = last.taskTitle || '未指派任务';
+  const head = last.completed ? '上次：' : '上次中断：';
+  const tail = last.completed ? '' : (' · ' + (last.reason || '中断'));
+  const text = $('#resumeText'), btn = $('#resumeBtn');
+  if (text) text.textContent = head + title + ' · ' + mins + ' 分钟' + tail;
+  if (btn) btn.textContent = '接着飞 ' + mins + '′';
+}
+function resumeLast() {
+  const last = latestSession();
+  if (!last) return;
+  const mins = clamp(Math.round((last.plannedSec || last.focusSec || 1500) / 60), 5, 90);
+  const task = last.taskId && S.missions.some(function (m) { return m.id === last.taskId && !m.done; }) ? last.taskId : null;
+  S.settings.duration = mins;
+  S.currentTaskId = task;
+  S.mode = 'voyage';
+  save();
+  renderSettings();
+  renderVoyage();
+  renderMissions();
+  renderResume();
+  startTimer();
+}
+
 function renderTitles() {
   const st = titleState();
   if (S.titleSeen == null) S.titleSeen = st.idx;
@@ -3116,6 +3210,8 @@ function renderVoyage() {
     renderStarmap();
     renderTimer();
     renderMeta();
+    renderFirstRun();
+    renderResume();
     return;
   }
   btn.classList.toggle('is-running', !!a && a.running);
@@ -3151,6 +3247,8 @@ function renderVoyage() {
   renderStarmap();
   renderTimer();
   renderMeta();
+  renderFirstRun();
+  renderResume();
 }
 
 /* ---------- 任务 ---------- */
@@ -3349,6 +3447,61 @@ function weeklySummary() {
   return { days: days, totalMin: totalMin, completed: completed, aborts: aborts,
     longest: longest, from: from, to: now, bestHour: bestHour, hasHour: hasHour,
     topReason: topReason, totalLy: Math.floor(totalMin) };
+}
+
+function weeklyCheckData() {
+  const wk = weeklySummary();
+  const prevStart = wk.from - 7 * 86400000;
+  const prev = S.sessions.filter(function (x) { return (x.end || 0) >= prevStart && (x.end || 0) < wk.from; });
+  const prevDone = prev.filter(function (x) { return x.completed; });
+  const prevMin = prevDone.reduce(function (a, x) { return a + (x.focusSec || 0) / 60; }, 0);
+  const delta = wk.totalMin - prevMin;
+  const aborts = S.sessions.filter(function (x) { return (x.end || 0) >= wk.from && !x.completed; });
+  const hours = {};
+  aborts.forEach(function (x) {
+    const h = new Date(x.end || x.start || Date.now()).getHours();
+    hours[h] = (hours[h] || 0) + 1;
+  });
+  let topHour = -1, topHourN = 0;
+  Object.keys(hours).forEach(function (k) { if (hours[k] > topHourN) { topHourN = hours[k]; topHour = Number(k); } });
+  const a = new Date(wk.from), b = new Date(wk.to);
+  const range = (a.getMonth() + 1) + '.' + pad2(a.getDate()) + ' – ' + (b.getMonth() + 1) + '.' + pad2(b.getDate());
+  let sum = '';
+  let exp = '';
+  const hourTxt = topHour >= 0 ? pad2(topHour) + ':00' : '最容易断的时段';
+  if (!wk.completed && !wk.aborts) {
+    sum = '本周还没有航段记录，先把一段 15 分钟跑起来。';
+    exp = '先飞一段 15 分钟，下周再来看体检。';
+  } else {
+    sum = '本周专注 ' + Math.round(wk.totalMin) + ' 分钟';
+    if (prevDone.length) sum += '，比上周' + (delta >= 0 ? '多 ' : '少 ') + Math.abs(Math.round(delta)) + ' 分钟';
+    else sum += '，上周没有可比的完成段';
+    sum += '；完成 ' + wk.completed + ' 段，中断 ' + wk.aborts + ' 次。';
+    if (wk.aborts >= 2 && wk.topReason) {
+      sum += '最常断在 ' + hourTxt + '，原因是' + wk.topReason + '。';
+    } else if (wk.hasHour) {
+      sum += '最稳时段 ' + pad2(wk.bestHour * 2) + ':00–' + pad2(wk.bestHour * 2 + 2) + ':00。';
+    }
+    if (wk.aborts >= 2) {
+      if (wk.topReason === '消息打断') exp = '下周把 ' + hourTxt + ' 这段改成 15 分钟，起飞前把手机放到另一个房间。';
+      else if (wk.topReason === '走神') exp = '下周把 ' + hourTxt + ' 的目标缩到一道题或一页，先飞 10 分钟。';
+      else if (wk.topReason === '被人打断') exp = '下周提前跟身边人说好 20 分钟勿扰，把 ' + hourTxt + ' 换成短段。';
+      else if (wk.topReason === '主动休息') exp = '下周把 ' + hourTxt + ' 拆成 15 分钟航段 + 10 分钟休整。';
+      else exp = '下周只改一个变量：把 ' + hourTxt + ' 这段缩短到 15 分钟。';
+    } else if (wk.hasHour && wk.completed >= 3) {
+      exp = '下周把 ' + pad2(wk.bestHour * 2) + ':00 这段延长 5 分钟，观察完成率是否还稳。';
+    } else if (wk.completed >= 1) {
+      exp = '下周固定同一时段再飞一段 25 分钟，只加一段，不加新目标。';
+    }
+  }
+  return { wk: wk, sum: sum, exp: exp, range: range };
+}
+function renderWeeklyCheck() {
+  const data = weeklyCheckData();
+  const range = $('#checkRange'), sum = $('#checkSum'), exp = $('#checkExp');
+  if (range) range.textContent = data.range;
+  if (sum) sum.textContent = data.sum;
+  if (exp) exp.textContent = data.exp;
 }
 
 function buildWeeklyCard() {
@@ -3771,6 +3924,7 @@ function renderStats() {
   $('#sumAvg').innerHTML = (m.doneCount ? Math.round(m.doneMin / m.doneCount) : 0) + '<em>min</em>';
   $('#sumStreak').innerHTML = m.bestStreak + '<em>天</em>';
   renderWeekCompare();
+  renderWeeklyCheck();
   renderHeatmap();
 
   if (!window.echarts) { showChartFallback(); return; }
@@ -5614,6 +5768,8 @@ function renderAll() {
   renderSettings();
   applyUiStage(false);
   renderNextAdvice();
+  renderFirstRun();
+  renderResume();
   if (currentView() === 'stats') renderStats();
 }
 
@@ -6267,6 +6423,9 @@ function bindEvents() {
     renderNextAdvice();
     showToast('下一段已设为 ' + nextAdvicePlan.min + ' 分钟，准备好了就起飞。');
   });
+
+  const resumeBtn = $('#resumeBtn');
+  if (resumeBtn) resumeBtn.addEventListener('click', resumeLast);
 
   $('#cardSave').addEventListener('click', saveVoyageCard);
     $('#cardShare').addEventListener('click', shareVoyageCard);
