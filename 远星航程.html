@@ -7798,8 +7798,10 @@ function boot() {
 
   if (!S.sessions.length && !S.missions.length) {
     setTimeout(function () {
-      if (!loginGuideNeeded()) showToast('按下「启动航程」开始第一段；中途切出页面会紧急返航。');
-    }, 1700);
+      if (loginGuideReady && !loginGuideNeeded() && !S.loginGuideDone) {
+        showToast('按下「启动航程」开始第一段；中途切出页面会紧急返航。');
+      }
+    }, 3400);
   }
 }
 
