@@ -1,0 +1,27 @@
+name: Sync app v37
+on:
+  push:
+    paths:
+      - '.github/workflows/sync-app-v37.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download artifact
+        run: |
+          curl -L --max-time 180 --retry 3 -o 远星航程.html https://aka.doubaocdn.com/s/2KaeIvjNig
+          ls -l 远星航程.html
+          sha1sum 远星航程.html
+      - name: Commit and push
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add 远星航程.html
+          git commit -m 'Publish v37: merge preview + second guide' || echo 'no change'
+          git push
+      - name: Show head
+        run: git rev-parse HEAD
