@@ -301,6 +301,16 @@ body.is-docked .dial-state::before{opacity:1;animation:live-blink 2.6s ease-in-o
   padding-top:9px;border-top:1px solid rgba(var(--title-rgb,240,163,62),.12)}
 .fr-quick .fr-q-lab{grid-row:span 2;font-family:var(--font-mono);font-size:9px;letter-spacing:.1em;color:var(--dust-dim)}
 .fr-quick .preset{min-height:30px;padding:0 9px;font-size:10.5px}
+.second-guide{margin-top:12px;padding:12px 2px 0;border-top:1px solid rgba(var(--title-rgb,240,163,62),.16)}
+.second-guide .sg-top{display:flex;align-items:baseline;justify-content:space-between;gap:10px;font-family:var(--font-mono);
+  font-size:9px;letter-spacing:.1em;color:var(--title-color,var(--beacon))}
+.second-guide .sg-top span{color:var(--dust-dim);letter-spacing:.04em}
+.second-guide .sg-text{margin-top:7px;font-size:12px;line-height:1.7;color:var(--dust)}
+.second-guide .sg-text b{display:block;margin-bottom:3px;color:var(--star);font-size:13.5px;font-weight:500}
+.second-guide .sg-acts{display:flex;flex-wrap:wrap;align-items:center;gap:14px;margin-top:10px}
+.second-guide .sg-go{color:var(--title-color,var(--beacon))}
+.second-guide .sg-skip{border:0!important;background:transparent!important;min-height:0;padding:2px 0;font-size:11px;
+  line-height:1.6;color:var(--dust-dim);text-decoration:underline;text-underline-offset:3px;letter-spacing:0}
 .login-tour{position:fixed;inset:0;z-index:35;pointer-events:none}
 .login-tour[hidden]{display:none}
 .login-tour .tour-panel{position:absolute;background:rgba(3,7,11,.84);pointer-events:auto;transition:background .2s}
@@ -1275,6 +1285,16 @@ body.theme-cb{--beacon:#58B6E0;--beacon-deep:#1D5D78;--flare:#D97AB2}
             </div>
           </div>
 
+          <div class="second-guide" id="secondGuide" hidden>
+            <div class="sg-top"><span>FIRST LANDING</span><span id="sgStage">LOG UNLOCKED</span></div>
+            <div class="sg-text"><b id="sgTitle">首段抵达 · 航行日志已解锁</b><span id="sgCopy">统计与成就要再完成 2 段或累计 60 分钟。先看看这一段的记录。</span></div>
+            <div class="sg-acts">
+              <button class="btn-line btn-sm sg-go" id="sgGo" type="button">打开航行日志</button>
+              <button class="btn-line btn-sm sg-go" id="sgGo2" type="button" hidden>看成就</button>
+              <button class="sg-skip" id="sgSkip" type="button">知道了</button>
+            </div>
+          </div>
+
           <div class="ambient-row">
             <label style="display:block;font-size:11px;letter-spacing:.14em;color:var(--dust-dim);font-family:var(--font-mono);margin-bottom:7px">舱内环境声</label>
             <div class="seg" id="ambientSeg" role="group" aria-label="环境声">
@@ -2008,7 +2028,8 @@ function defaultState() {
     frame: 'thin',
     shipSeen: 1,
     guideDone: false,
-    loginGuideDone: false
+    loginGuideDone: false,
+    secondGuideDone: false
   };
 }
 function migrateState(parsed) {
@@ -2025,6 +2046,7 @@ function migrateState(parsed) {
   base.shipSeen = Math.max(1, Number(parsed.shipSeen) || 1);
   base.guideDone = !!parsed.guideDone;
   base.loginGuideDone = !!parsed.loginGuideDone;
+  base.secondGuideDone = !!parsed.secondGuideDone;
   base.mode = parsed.mode === 'rest' ? 'rest' : 'voyage';
   base.rest = parsed.rest && typeof parsed.rest === 'object' ? parsed.rest : null;
   base.active = parsed.active && typeof parsed.active === 'object' ? parsed.active : null;
@@ -3075,6 +3097,34 @@ function renderFirstRun() {
     const t = currentTaskTitle();
     task.textContent = t && t !== '未指派任务' ? t : '可不选';
   }
+}
+function renderSecondGuide() {
+  const box = $('#secondGuide');
+  if (!box) return;
+  const completed = S.sessions.filter(function (s) { return s.completed; }).length;
+  const show = !!(!S.secondGuideDone && completed === 1 && !S.active && !S.rest && loginGuideReady && !loginGuideNeeded());
+  box.hidden = !show;
+  if (!show) return;
+  const stage = uiStage() >= 2 ? 2 : 1;
+  $('#sgStage').textContent = stage >= 2 ? 'STATS · BADGES' : 'LOG UNLOCKED';
+  $('#sgTitle').textContent = stage >= 2 ? '首段抵达 · 统计与成就已解锁' : '首段抵达 · 航行日志已解锁';
+  $('#sgCopy').textContent = stage >= 2
+    ? '统计和成就已经解锁。看看这一周的航线，或者去挑一枚新徽章。'
+    : '统计与成就要再完成 2 段或累计 60 分钟。先看看这一段的记录。';
+  const go = $('#sgGo'), go2 = $('#sgGo2');
+  if (go) go.textContent = stage >= 2 ? '看统计' : '打开航行日志';
+  if (go2) go2.hidden = stage < 2;
+}
+function openSecondGuide(which) {
+  const target = (uiStage() >= 2 && which === 'badges') ? 'badges' : (uiStage() >= 2 ? 'stats' : 'log');
+  location.hash = '#' + target;
+  setView(target);
+}
+function skipSecondGuide() {
+  S.secondGuideDone = true;
+  save();
+  renderSecondGuide();
+  showToast('之后可以在侧栏随时查看日志、统计和成就。');
 }
 function latestSession() {
   let last = null;
@@ -4659,7 +4709,8 @@ function cloudPayload() {
     rests: S.rests,
     stars: S.stars || 0,
     frames: S.frames || ['thin'],
-    frame: S.frame || 'thin'
+    frame: S.frame || 'thin',
+    secondGuideDone: !!S.secondGuideDone
   };
 }
 
@@ -4670,10 +4721,11 @@ function adoptCloudData(data, updatedAt) {
     return false;
   }
   if (S.sessions.length || S.missions.length || S.rests.length) saveSyncSnapshot('云端恢复前');
-  const keepGuideDone = !!S.guideDone, keepLoginGuideDone = !!S.loginGuideDone;
+  const keepGuideDone = !!S.guideDone, keepLoginGuideDone = !!S.loginGuideDone, keepSecondGuideDone = !!S.secondGuideDone;
   S = migrateState(data);
   S.guideDone = keepGuideDone || !!S.guideDone;
   S.loginGuideDone = keepLoginGuideDone || !!S.loginGuideDone;
+  S.secondGuideDone = keepSecondGuideDone || !!S.secondGuideDone || S.sessions.length > 1;
   S.active = null;
   S.rest = null;
   if (S.mode === 'rest') S.mode = 'voyage';
@@ -4952,7 +5004,8 @@ function mergeVoyageData(remoteData) {
     frame: local.frame || remote.frame || 'thin',
     shipSeen: Math.max(syncNum(local.shipSeen) || 1, syncNum(remote.shipSeen) || 1),
     guideDone: !!(local.guideDone || remote.guideDone),
-    loginGuideDone: !!(local.loginGuideDone || remote.loginGuideDone)
+    loginGuideDone: !!(local.loginGuideDone || remote.loginGuideDone),
+    secondGuideDone: !!(local.secondGuideDone || remote.secondGuideDone || (local.sessions.length + remote.sessions.length > 1))
   };
 }
 
@@ -4963,6 +5016,65 @@ function flushPendingCloudSync() {
   afterSignIn();
 }
 
+function mergePreviewDetails(remoteData) {
+  const remote = migrateState(remoteData || {});
+  const merged = mergeVoyageData(remoteData);
+  const sessionKey = function (x) { return x.id || ('s' + syncNum(x.start) + '|' + syncNum(x.end)); };
+  const missionKey = function (x) { return x.id || x.title; };
+  const restKey = function (x) { return x.id || ('r' + Math.round(syncNum(x.start) / 60000) + '|' + syncNum(x.restSec)); };
+  const localSessionKeys = new Set(S.sessions.map(sessionKey));
+  const localMissionKeys = new Set(S.missions.map(missionKey));
+  const localRestKeys = new Set(S.rests.map(restKey));
+  return {
+    merged: merged,
+    local: { sessions: S.sessions.length, missions: S.missions.length, rests: S.rests.length },
+    remote: { sessions: remote.sessions.length, missions: remote.missions.length, rests: remote.rests.length },
+    after: { sessions: merged.sessions.length, missions: merged.missions.length, rests: merged.rests.length },
+    added: {
+      sessions: merged.sessions.filter(function (x) { return !localSessionKeys.has(sessionKey(x)); }).length,
+      missions: merged.missions.filter(function (x) { return !localMissionKeys.has(missionKey(x)); }).length,
+      rests: merged.rests.filter(function (x) { return !localRestKeys.has(restKey(x)); }).length
+    }
+  };
+}
+function showMergePreview(remoteData, updatedAt, remoteN) {
+  const pv = mergePreviewDetails(remoteData), a = pv.after, add = pv.added;
+  const lines = [
+    '本地 ' + pv.local.sessions + ' 段 / 云端 ' + pv.remote.sessions + ' 段；合并后 ' + a.sessions + ' 段，新增 ' + add.sessions + ' 段。',
+    '任务 ' + pv.local.missions + ' + ' + pv.remote.missions + ' → ' + a.missions + ' 个，新增 ' + add.missions + ' 个。'
+  ];
+  if (pv.local.rests || pv.remote.rests) {
+    lines.push('休整 ' + pv.local.rests + ' + ' + pv.remote.rests + ' → ' + a.rests + ' 次。');
+  }
+  lines.push('不会覆盖任何一边的记录；确认后会先自动留一份快照，再同步到云端。');
+  cancelCloudPush();
+  setSyncStatus('wait', '待合并', '确认合并预览后才会写入云端', '');
+  openModal({
+    title: '合并本地与云端航程？',
+    body: lines.join(' '),
+    confirmText: '确认合并',
+    confirmClass: 'btn btn-primary',
+    cancelText: '先不合并',
+    onCancel: function () {
+      setSyncStatus('wait', '未合并', '已保留本地数据；可在云端账号里手动上传或恢复', '');
+      showToast('已保留本地数据，未合并云端。');
+    },
+    onConfirm: function () {
+      cancelCloudPush();
+      saveSyncSnapshot('登录合并前');
+      S = migrateState(pv.merged);
+      S.active = null;
+      S.rest = null;
+      if (S.mode === 'rest') S.mode = 'voyage';
+      save();
+      renderAll();
+      cloudSyncAt = Date.parse(updatedAt) || Date.now();
+      setSyncStatus('syncing', '正在合并', '正在合并本地与云端航程…');
+      pushCloud(true, '已合并并同步 · ' + S.sessions.length + ' 段', '正在合并');
+      showToast('已合并：' + pv.local.sessions + ' 段本地 + ' + pv.remote.sessions + ' 段云端 → ' + S.sessions.length + ' 段。');
+    }
+  });
+}
 function afterSignIn() {
   if (!cloudClient || !cloudUser) return;
   S.loginGuideDone = true;
@@ -5014,18 +5126,7 @@ function afterSignIn() {
       return;
     }
 
-    const localN = S.sessions.length;
-    saveSyncSnapshot('登录合并前');
-    const merged = mergeVoyageData(remoteData);
-    S = migrateState(merged);
-    S.active = null;
-    S.rest = null;
-    if (S.mode === 'rest') S.mode = 'voyage';
-    save();
-    renderAll();
-    cloudSyncAt = Date.parse(res.data.updated_at) || Date.now();
-    setSyncStatus('syncing', '正在合并', '正在合并本地 ' + localN + ' 段 · 云端 ' + remoteN + ' 段…');
-    pushCloud(true, '已合并并同步 · ' + S.sessions.length + ' 段', '正在合并');
+    showMergePreview(remoteData, res.data.updated_at, remoteN);
   });
 }
 
@@ -5590,6 +5691,7 @@ function openModal(opts) {
   $('#modalTitle').textContent = opts.title;
   $('#modalBody').textContent = opts.body;
   $('#modalConfirm').textContent = opts.confirmText || '确认';
+  $('#modalConfirm').className = opts.confirmClass || 'btn-danger';
   $('#modalCancel').textContent = opts.cancelText || '取消';
   const extra = $('#modalExtra');
   extra.hidden = !opts.extraText;
@@ -5608,6 +5710,11 @@ function closeModal() {
   cancelCallback = null;
   const extra = $('#modalExtra');
   if (extra) { extra.hidden = true; extraCallback = null; }
+}
+function dismissModal() {
+  const cb = cancelCallback;
+  closeModal();
+  if (cb) cb();
 }
 function openReasonPicker(el) {
   const modal = $('#reasonModal');
@@ -6103,6 +6210,7 @@ function renderAll() {
   renderNextAdvice();
   renderLoginGuide();
   renderFirstRun();
+  renderSecondGuide();
   renderResume();
   if (currentView() === 'stats') renderStats();
 }
@@ -6735,12 +6843,14 @@ function bindEvents() {
 
   const snapBtn = $('#snapBtn');
   if (snapBtn) snapBtn.addEventListener('click', restoreSnapshot);
+  const sgGo = $('#sgGo');
+  if (sgGo) sgGo.addEventListener('click', function () { openSecondGuide('main'); });
+  const sgGo2 = $('#sgGo2');
+  if (sgGo2) sgGo2.addEventListener('click', function () { openSecondGuide('badges'); });
+  const sgSkip = $('#sgSkip');
+  if (sgSkip) sgSkip.addEventListener('click', skipSecondGuide);
 
-  $('#modalCancel').addEventListener('click', function () {
-    const cb = cancelCallback;
-    closeModal();
-    if (cb) cb();
-  });
+  $('#modalCancel').addEventListener('click', dismissModal);
   const logList = $('#logList');
   if (logList) logList.addEventListener('click', function (e) {
     const sv = e.target.closest('[data-salvage]');
@@ -6804,7 +6914,7 @@ function bindEvents() {
     if (cb) cb();
   });
   $('#modal').addEventListener('click', function (e) {
-    if (e.target === $('#modal')) closeModal();
+    if (e.target === $('#modal')) dismissModal();
   });
 
   document.addEventListener('visibilitychange', function () {
@@ -6849,7 +6959,7 @@ function bindEvents() {
     if (e.key === 'Escape') {
       if ($('#cardModal').classList.contains('is-open')) { closeVoyageCard(); return; }
       if ($('#reasonModal').classList.contains('is-open')) { closeReasonPicker(); return; }
-      if ($('#modal').classList.contains('is-open')) { closeModal(); return; }
+      if ($('#modal').classList.contains('is-open')) { dismissModal(); return; }
       if (S.active || S.rest) requestAbort();
       return;
     }
