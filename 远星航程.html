@@ -288,10 +288,22 @@ body.is-docked .dial-state::before{opacity:1;animation:live-blink 2.6s ease-in-o
 .login-guide .lg-steps i{font-style:normal;color:var(--title-color,var(--beacon))}
 .login-guide .lg-acts{display:flex;flex-wrap:wrap;align-items:center;gap:14px;margin-top:11px}
 .login-guide .lg-go{color:var(--title-color,var(--beacon))}
-.login-guide .lg-skip{color:var(--dust-dim)}
+.login-guide .lg-skip{border:0!important;background:transparent!important;min-height:0;padding:2px 0;font-size:11px;
+  line-height:1.6;color:var(--dust-dim);text-decoration:underline;text-underline-offset:3px;letter-spacing:0}
+.cloud-link{margin-top:9px;padding:0;border:0;background:transparent;color:var(--dust-dim);font-size:11px;
+  text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.cloud-link:hover{color:var(--star)}
+.set-guide{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:2px 0 0;
+  padding:12px 2px 13px;border-bottom:1px solid rgba(30,55,72,.55);font-size:12px;color:var(--dust)}
+.set-guide b{display:block;color:var(--star);font-weight:500}
+.set-guide small{display:block;margin-top:3px;font-size:10.5px;color:var(--dust-dim)}
+.fr-quick{grid-column:1/-1;display:grid;grid-template-columns:auto minmax(0,1fr) minmax(0,1fr);align-items:center;gap:6px;margin-top:9px;
+  padding-top:9px;border-top:1px solid rgba(var(--title-rgb,240,163,62),.12)}
+.fr-quick .fr-q-lab{grid-row:span 2;font-family:var(--font-mono);font-size:9px;letter-spacing:.1em;color:var(--dust-dim)}
+.fr-quick .preset{min-height:30px;padding:0 9px;font-size:10.5px}
 .login-tour{position:fixed;inset:0;z-index:35;pointer-events:none}
 .login-tour[hidden]{display:none}
-.login-tour .tour-panel{position:absolute;background:rgba(3,7,11,.72);pointer-events:auto;transition:background .2s}
+.login-tour .tour-panel{position:absolute;background:rgba(3,7,11,.84);pointer-events:auto;transition:background .2s}
 .login-tour .tour-ring{position:absolute;border:1.5px solid rgba(240,163,62,.9);border-radius:999px;pointer-events:none;
   box-shadow:0 0 0 5px rgba(240,163,62,.10);animation:tourPulse 1.9s ease-in-out infinite}
 @keyframes tourPulse{0%,100%{box-shadow:0 0 0 5px rgba(240,163,62,.10)}50%{box-shadow:0 0 0 10px rgba(240,163,62,.03)}}
@@ -941,6 +953,7 @@ body.is-lowfx .deck{box-shadow:none!important}
   font-family:var(--font-mono);font-size:10.5px;color:var(--dust);letter-spacing:.02em;
   transition:color .25s,border-color .25s,background .25s}
 .sync-chip[hidden]{display:none}
+.sync-chip{cursor:pointer}
 .sync-chip .sync-dot{width:5px;height:5px;border-radius:50%;background:var(--dust-dim);flex:none;
   transition:background .25s,box-shadow .25s}
 .sync-chip[data-state="syncing"]{color:var(--beacon);border-color:rgba(240,163,62,.28);background:rgba(240,163,62,.08)}
@@ -1083,6 +1096,7 @@ body.theme-cb{--beacon:#58B6E0;--beacon-deep:#1D5D78;--flare:#D97AB2}
 .fleet-main{flex:1;min-width:0}
 .fleet-sub{display:flex;gap:6px;margin-top:2px}
 </style>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 </head>
 <body>
 
@@ -1153,7 +1167,7 @@ body.theme-cb{--beacon:#58B6E0;--beacon-deep:#1D5D78;--flare:#D97AB2}
         <h1 class="view-title" id="viewTitle">航行台</h1>
         <p class="topbar-sub" id="viewSub">2026年11月4日 星期三</p>
         <span class="fleet-tag" id="fleetTag" hidden></span>
-        <span class="sync-chip" id="syncChip" data-state="idle" hidden><span class="sync-dot"></span><span id="syncChipText">已同步</span></span>
+        <span class="sync-chip" id="syncChip" data-state="idle" role="button" tabindex="0" title="查看同步与恢复点" hidden><span class="sync-dot"></span><span id="syncChipText">已同步</span></span>
       </div>
       <button class="icon-btn" id="muteBtn" aria-pressed="false" type="button">
         <svg viewBox="0 0 24 24" aria-hidden="true" id="muteIcon"><path d="M4 9v6h4l5 4V5l-5 4H4z"/><path d="M16 9c1.3 1.6 1.3 4.4 0 6"/></svg>
@@ -1230,8 +1244,8 @@ body.theme-cb{--beacon:#58B6E0;--beacon-deep:#1D5D78;--flare:#D97AB2}
 
           <div class="login-guide" id="loginGuide" hidden>
             <div class="lg-kicker mono">ACCOUNT · CLOUD</div>
-            <h3>登录后，航程才不会丢</h3>
-            <p>不登录，云端不会保存你的航程；本地虽然会留下，但换设备、清缓存或重装就会丢。</p>
+            <h3 id="loginGuideTitle">登录后，航程才不会丢</h3>
+            <p id="loginGuideCopy">不登录，云端不会保存你的航程；本地虽然会留下，但换设备、清缓存或重装就会丢。</p>
             <div class="lg-steps">
               <span><i>01</i> 设置</span>
               <span><i>02</i> 云端账号</span>
@@ -1239,7 +1253,7 @@ body.theme-cb{--beacon:#58B6E0;--beacon-deep:#1D5D78;--flare:#D97AB2}
             </div>
             <div class="lg-acts">
               <button class="btn-line lg-go" id="loginGuideGo" type="button">去设置登录</button>
-              <button class="btn-line lg-skip" id="loginGuideSkip" type="button">先不登录</button>
+              <button class="lg-skip" id="loginGuideSkip" type="button">先不登录</button>
             </div>
           </div>
 
@@ -1252,6 +1266,13 @@ body.theme-cb{--beacon:#58B6E0;--beacon-deep:#1D5D78;--flare:#D97AB2}
             <div class="fr-step"><span class="fr-n mono">01</span><span>航段<b id="frDur">25′</b></span></div>
             <div class="fr-step"><span class="fr-n mono">02</span><span>任务<b id="frTask">可不选</b></span></div>
             <div class="fr-step"><span class="fr-n mono">03</span><span>启动<b>下方起飞</b></span></div>
+            <div class="fr-quick" id="quickStart">
+              <span class="fr-q-lab">一键起飞</span>
+              <button class="preset" type="button" data-quick-title="作业" data-quick-min="25">25′ 作业</button>
+              <button class="preset" type="button" data-quick-title="背书" data-quick-min="25">25′ 背书</button>
+              <button class="preset" type="button" data-quick-title="错题整理" data-quick-min="45">45′ 错题</button>
+              <button class="preset" type="button" data-quick-title="阅读" data-quick-min="45">45′ 阅读</button>
+            </div>
           </div>
 
           <div class="ambient-row">
@@ -1556,6 +1577,11 @@ body.theme-cb{--beacon:#58B6E0;--beacon-deep:#1D5D78;--flare:#D97AB2}
     <!-- ========== 视图：设置 ========== -->
     <section class="view" id="view-settings" data-title="设置">
 
+      <div class="set-guide">
+        <div><b>常用设置</b><small>先调航行时长；云端、声音、数据与编队收在下面。</small></div>
+        <button class="btn-line" id="advSetBtn" type="button" aria-expanded="false">更多设置</button>
+      </div>
+
       <section class="set-group" id="cloudGroup">
         <h3>云端账号</h3>
 
@@ -1577,12 +1603,12 @@ body.theme-cb{--beacon:#58B6E0;--beacon-deep:#1D5D78;--flare:#D97AB2}
 
         <div class="set-row is-wide" id="cloudAuth" hidden>
           <div class="label">
-            <b>登录 / 注册</b>
+            <b id="cloudAuthTitle">登录 / 注册</b>
             <small>登录后航段、任务、设置会同步到你的 Supabase 项目，换设备也能接着飞。</small>
           </div>
           <div class="cloud-fields">
-            <input class="cloud-input" id="cloudAccountName" type="text" placeholder="账号（登录名，2–16 位）" autocomplete="username" spellcheck="false">
-            <input class="cloud-input" id="cloudEmail" type="email" placeholder="邮箱（注册必填；用邮箱登录可只填这里）" autocomplete="email">
+            <input class="cloud-input" id="cloudAccountName" type="text" placeholder="账号或邮箱" autocomplete="username" spellcheck="false">
+            <input class="cloud-input" id="cloudEmail" type="email" placeholder="注册邮箱" autocomplete="email" hidden>
             <input class="cloud-input" id="cloudPass" type="password" placeholder="密码（至少 6 位）" autocomplete="current-password">
             <div class="cloud-acts">
               <button class="btn btn-sm btn-primary" id="cloudLoginBtn" type="button">登录</button>
@@ -1590,7 +1616,8 @@ body.theme-cb{--beacon:#58B6E0;--beacon-deep:#1D5D78;--flare:#D97AB2}
               <button class="btn btn-sm btn-ghost" id="cloudForgetBtn" type="button">换个项目</button>
               <span class="cloud-msg" id="cloudMsg"></span>
             </div>
-            <p class="cloud-hint">账号和邮箱都能单独登录。账号只用于登录与显示，邮箱不会公开。</p>
+            <p class="cloud-hint" id="cloudAuthHint">输入账号或邮箱，再加密码就能登录；没有账号点「注册」。</p>
+            <button class="cloud-link" id="cloudResetBtn" type="button">忘记密码</button>
           </div>
         </div>
 
@@ -1605,30 +1632,6 @@ body.theme-cb{--beacon:#58B6E0;--beacon-deep:#1D5D78;--flare:#D97AB2}
             <button class="btn btn-sm btn-ghost" id="cloudOutBtn" type="button">退出登录</button>
           </div>
           <span class="cloud-msg" id="cloudSyncMsg" style="margin-top:8px;display:block"></span>
-        </div>
-      </section>
-
-      <section class="set-group">
-        <h3>同航编队</h3>
-        <div class="set-row is-wide">
-          <div class="label">
-            <b>编队码</b>
-            <small>和同学填同一个 6 位码，就能互相看到今天飞了多少光年；只同步汇总数，不同步任务名和备注。</small>
-          </div>
-          <div class="ctrl fleet-ctrl">
-            <input class="cloud-input" id="fleetCode" type="text" maxlength="6" placeholder="例如 YX2026" autocomplete="off">
-            <button class="btn btn-sm" id="fleetSave" type="button">保存</button>
-          </div>
-        </div>
-        <div class="set-row is-wide">
-          <div class="label">
-            <b>舰名</b>
-            <small>编队里显示的名字，留空就是「舰长」。</small>
-          </div>
-          <div class="ctrl fleet-ctrl">
-            <input class="cloud-input" id="fleetNick" type="text" maxlength="10" placeholder="舰长" autocomplete="off">
-            <button class="btn btn-sm" id="fleetNickSave" type="button">保存</button>
-          </div>
         </div>
       </section>
 
@@ -1707,7 +1710,31 @@ body.theme-cb{--beacon:#58B6E0;--beacon-deep:#1D5D78;--flare:#D97AB2}
         </div>
       </section>
 
-      <section class="set-group">
+      <section class="set-group is-advanced" id="fleetGroup">
+        <h3>同航编队</h3>
+        <div class="set-row is-wide">
+          <div class="label">
+            <b>编队码</b>
+            <small>和同学填同一个 6 位码，就能互相看到今天飞了多少光年；只同步汇总数，不同步任务名和备注。</small>
+          </div>
+          <div class="ctrl fleet-ctrl">
+            <input class="cloud-input" id="fleetCode" type="text" maxlength="6" placeholder="例如 YX2026" autocomplete="off">
+            <button class="btn btn-sm" id="fleetSave" type="button">保存</button>
+          </div>
+        </div>
+        <div class="set-row is-wide">
+          <div class="label">
+            <b>舰名</b>
+            <small>编队里显示的名字，留空就是「舰长」。</small>
+          </div>
+          <div class="ctrl fleet-ctrl">
+            <input class="cloud-input" id="fleetNick" type="text" maxlength="10" placeholder="舰长" autocomplete="off">
+            <button class="btn btn-sm" id="fleetNickSave" type="button">保存</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="set-group is-advanced" id="soundGroup">
         <h3>声音</h3>
         <div class="set-row">
           <div class="label">
@@ -1763,7 +1790,7 @@ body.theme-cb{--beacon:#58B6E0;--beacon-deep:#1D5D78;--flare:#D97AB2}
         <p class="about" id="iosNote" hidden>iPhone 侧边静音键开启时，程序合成的环境声会被系统静音，提示音不受影响。需要声音时请关掉侧边静音键。</p>
       </section>
 
-      <section class="set-group">
+      <section class="set-group is-advanced" id="dataGroup">
         <h3>数据</h3>
         <div class="set-row">
           <div class="label">
@@ -1872,7 +1899,6 @@ body.theme-cb{--beacon:#58B6E0;--beacon-deep:#1D5D78;--flare:#D97AB2}
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-<script src="https://fastly.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js" defer></script>
 <script>
 /* ============================================================
    远星航程 · 专注航行记录台
@@ -2284,6 +2310,21 @@ function releaseWake() {
   if (wakeLock) { try { wakeLock.release(); } catch (err) {} wakeLock = null; }
 }
 
+function quickStartTemplate(title, minutes) {
+  const min = Math.max(5, Math.min(90, Number(minutes) || 25));
+  let mission = S.missions.filter(function (m) { return !m.done && m.title === title; })[0];
+  if (!mission) {
+    mission = { id: uid(), title: title, est: Math.max(1, Math.ceil(min / 25)), tag: '综合', createdAt: Date.now(), done: false };
+    S.missions.unshift(mission);
+  }
+  S.currentTaskId = mission.id;
+  S.settings.duration = min;
+  S.mode = 'voyage';
+  save();
+  renderAll();
+  startTimer();
+  showToast('一键起飞：' + title + ' · ' + min + '′');
+}
 function startTimer() {
   clearNextAdvice();
   S.guideDone = true;
@@ -2933,6 +2974,10 @@ function clearNextAdvice() {
 }
 
 let loginGuideReady = false;
+function markLoginGuideReady() {
+  loginGuideReady = true;
+  renderLoginGuide();
+}
 function loginGuideNeeded() {
   return !!(loginGuideReady && cloudCfg && !cloudUser && !S.loginGuideDone &&
     !S.guideDone && !S.sessions.length && !S.active && !S.rest);
@@ -2940,6 +2985,12 @@ function loginGuideNeeded() {
 function renderLoginGuide() {
   const box = $('#loginGuide'), show = loginGuideNeeded();
   if (box) box.hidden = !show;
+  const title = $('#loginGuideTitle'), copy = $('#loginGuideCopy'), go = $('#loginGuideGo');
+  if (title) title.textContent = cloudSdkFailed ? '云端暂时连不上' : '登录后，航程才不会丢';
+  if (copy) copy.textContent = cloudSdkFailed
+    ? '现在连不上云端，登录暂时不可用。先本地开始也可以，但换设备、清缓存或重装就会丢。'
+    : '不登录，云端不会保存你的航程；本地虽然会留下，但换设备、清缓存或重装就会丢。';
+  if (go) go.textContent = cloudSdkFailed ? '查看设置' : '去设置登录';
   if (show) showLoginTour(); else hideLoginTour();
   renderFirstRun();
 }
@@ -2955,7 +3006,7 @@ function goLoginGuide() {
   renderLoginGuide();
   location.hash = '#settings';
   setView('settings');
-  showToast('在「云端账号」里输入账号和密码；没有账号可以直接注册。');
+  showToast(cloudSdkFailed ? '云端暂时连不上；可以先本地开始，联网后再回来登录。' : '在「云端账号」里输入账号或邮箱；没有账号可以直接注册。');
   setTimeout(function () {
     const group = $('#cloudGroup');
     if (group) group.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -2976,7 +3027,7 @@ function positionLoginTour() {
   const bottom = Math.min(vh, rect.bottom + pad);
   const set = function (side, css) {
     const el = tour.querySelector('[data-tour="' + side + '"]');
-    if (el) el.style.cssText = 'position:absolute;background:rgba(3,7,11,.72);pointer-events:auto;' + css;
+    if (el) el.style.cssText = 'position:absolute;background:rgba(3,7,11,.84);pointer-events:auto;' + css;
   };
   set('top', 'left:0;top:0;width:100%;height:' + top + 'px');
   set('bottom', 'left:0;top:' + bottom + 'px;width:100%;height:' + Math.max(0, vh - bottom) + 'px');
@@ -3507,6 +3558,36 @@ function renderLog() {
 
 /* ---------- 统计 ---------- */
 let charts = {};
+let echartsPromise = null;
+function loadEcharts() {
+  if (window.echarts) return Promise.resolve();
+  if (echartsPromise) return echartsPromise;
+  const cdn = 'https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js';
+  echartsPromise = new Promise(function (resolve, reject) {
+    const script = document.createElement('script');
+    let settled = false;
+    const fail = function () {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      script.remove();
+      echartsPromise = null;
+      reject(new Error('echarts load failed'));
+    };
+    const timer = setTimeout(fail, 7000);
+    script.src = cdn;
+    script.async = true;
+    script.onload = function () {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve();
+    };
+    script.onerror = fail;
+    document.head.appendChild(script);
+  });
+  return echartsPromise;
+}
 const CH = {
   text: '#8399AC', dim: '#5C7183', line: '#2A4459', split: 'rgba(30,55,72,.55)',
   done: '#F0A33E', abort: '#B4563F', mono: 'ui-monospace, SFMono-Regular, Menlo, monospace'
@@ -3529,10 +3610,7 @@ function setChartEmpty(el, text) {
 
 function showChartFallback() {
   ['chartDaily', 'chartHour', 'chartRate'].forEach(function (id) {
-    const el = $('#' + id);
-    if (el && !el.dataset.fb) {
-      setChartEmpty(el, '图表组件未能加载（可能处于离线状态）。航段明细可以在「日志」页查看。');
-    }
+    setChartEmpty($('#' + id), '图表组件未能加载（可能处于离线状态）。航段明细可以在「日志」页查看。');
   });
 }
 
@@ -4049,7 +4127,16 @@ function renderStats() {
   renderWeeklyCheck();
   renderHeatmap();
 
-  if (!window.echarts) { showChartFallback(); return; }
+  if (!window.echarts) {
+    ['chartDaily', 'chartHour', 'chartRate'].forEach(function (id) {
+      setChartEmpty($('#' + id), '图表加载中…');
+    });
+    loadEcharts().then(function () {
+      const active = document.querySelector('.view.is-active');
+      if (active && active.id === 'view-stats') renderStats();
+    }).catch(function () { showChartFallback(); });
+    return;
+  }
 
   /* 近 14 天 */
   const dayKeys = [];
@@ -4420,9 +4507,10 @@ const DEFAULT_CLOUD_CFG = {
   key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpyZXRoaGxwZWlraGltenl3aW16Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTM5Nzc4NDcsImV4cCI6MjEwOTU1Mzg0N30.1g6b0OywWjNP9ncGk45-4SVpVIJ_FWnfrH0cORIqhxg'
 };
 const CLOUD_TABLE = 'voyages';
+const APP_PUBLIC_URL = 'https://wjc123232145324.github.io/yuanxing-voyage/%E8%BF%9C%E6%98%9F%E8%88%AA%E7%A8%8B.html';
 const LEADERBOARD_TABLE = 'leaderboard';
 const TEST_ACCOUNT_ID = 'b142b58f-5085-42dd-a80f-67a38640edf3';
-const CLOUD_SDK = 'https://fastly.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js';
+const CLOUD_SDK = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js';
 let cloudCfg = null;
 let cloudClient = null;
 let cloudUser = null;
@@ -4436,6 +4524,9 @@ let syncStatus = { state: 'idle', text: '已同步' };
 function isTestAccount() { return cloudIsTest || !!(cloudUser && cloudUser.id === TEST_ACCOUNT_ID); }
 let cloudAuthBusy = false;
 let cloudAuthPending = null;
+let cloudAuthMode = 'login';
+let cloudAuthChecked = false;
+let cloudSdkFailed = false;
 
 function loadCloudCfg() {
   let raw = null;
@@ -4488,10 +4579,17 @@ function loadCloudSdk(cb) {
   if (window.supabase && window.supabase.createClient) return cb(true);
   let done = false;
   const s = document.createElement('script');
+  const finish = function (ok) {
+    if (done) return;
+    done = true;
+    clearTimeout(timer);
+    cb(ok);
+  };
+  const timer = setTimeout(function () { s.remove(); finish(false); }, 8000);
   s.src = CLOUD_SDK;
   s.async = true;
-  s.onload = function () { if (!done) { done = true; cb(!!(window.supabase && window.supabase.createClient)); } };
-  s.onerror = function () { if (!done) { done = true; cb(false); } };
+  s.onload = function () { finish(!!(window.supabase && window.supabase.createClient)); };
+  s.onerror = function () { s.remove(); finish(false); };
   document.head.appendChild(s);
 }
 
@@ -4500,7 +4598,10 @@ function connectCloud(cb) {
   setCloudMsg($('#cloudMsg'), '正在加载云端模块…');
   loadCloudSdk(function (ok) {
     if (!ok) {
+      cloudAuthChecked = true;
+      cloudSdkFailed = true;
       setCloudMsg($('#cloudMsg'), '云端模块没加载出来，可能处于离线状态', 'bad');
+      markLoginGuideReady();
       if (cb) cb(false);
       return;
     }
@@ -4510,12 +4611,19 @@ function connectCloud(cb) {
       });
     } catch (e) {
       cloudClient = null;
+      cloudSdkFailed = true;
+      cloudAuthChecked = true;
       setCloudMsg($('#cloudSetupMsg'), '项目地址或密钥格式不对', 'bad');
+      markLoginGuideReady();
       if (cb) cb(false);
       return;
     }
+    cloudSdkFailed = false;
     loadLeaderboard(true);
     cloudClient.auth.onAuthStateChange(function (evt, sess) {
+      cloudAuthChecked = true;
+      cloudSdkFailed = false;
+      markLoginGuideReady();
       const was = cloudUser && cloudUser.id;
       cloudUser = sess ? sess.user : null;
       if (!cloudUser) cloudAccountName = '';
@@ -4523,12 +4631,20 @@ function connectCloud(cb) {
       if (cloudUser && (!was || was !== cloudUser.id)) afterSignIn();
     });
     cloudClient.auth.getSession().then(function (res) {
+      cloudAuthChecked = true;
+      cloudSdkFailed = false;
+      markLoginGuideReady();
       const sess = res && res.data && res.data.session;
       cloudUser = sess ? sess.user : null;
       renderCloud();
       if (cloudUser) afterSignIn();
       else { setCloudMsg($('#cloudMsg'), ''); if (cb) cb(true); }
-    }).catch(function () { if (cb) cb(true); });
+    }).catch(function () {
+      cloudAuthChecked = true;
+      cloudSdkFailed = true;
+      markLoginGuideReady();
+      if (cb) cb(true);
+    });
   });
 }
 
@@ -4553,6 +4669,7 @@ function adoptCloudData(data, updatedAt) {
     setCloudMsg($('#cloudSyncMsg'), '正在计时或休整，先结束再同步', 'bad');
     return false;
   }
+  if (S.sessions.length || S.missions.length || S.rests.length) saveSyncSnapshot('云端恢复前');
   const keepGuideDone = !!S.guideDone, keepLoginGuideDone = !!S.loginGuideDone;
   S = migrateState(data);
   S.guideDone = keepGuideDone || !!S.guideDone;
@@ -4898,6 +5015,7 @@ function afterSignIn() {
     }
 
     const localN = S.sessions.length;
+    saveSyncSnapshot('登录合并前');
     const merged = mergeVoyageData(remoteData);
     S = migrateState(merged);
     S.active = null;
@@ -4963,7 +5081,10 @@ function cloudErrText(err) {
   if (/Invalid login credentials/i.test(m)) return '账号或密码不正确';
   if (/already registered|User already registered/i.test(m)) return '这个邮箱已注册，直接登录';
   if (/Failed to fetch|NetworkError|Load failed/i.test(m)) return '连不上项目，检查网络';
-  if (/rate limit|too many/i.test(m)) return '尝试太频繁，等一会儿再试';
+  if (/rate limit|too many|security purposes/i.test(m)) return '尝试太频繁，等一会儿再试';
+  if (/Email address.*invalid|Invalid email/i.test(m)) return '这个邮箱地址不可用，换一个再试';
+  if (/Email not confirmed/i.test(m)) return '邮箱还没确认，先去收确认邮件';
+  if (/Password should be at least|password.*6 characters/i.test(m)) return '密码至少要 6 位';
   return m || '操作失败，请重试';
 }
 
@@ -4984,6 +5105,42 @@ function signInWithEmail(email, pass) {
   }).catch(function (err) { cloudAuthBusy = false; setCloudMsg($('#cloudMsg'), cloudErrText(err), 'bad'); });
 }
 
+function setCloudAuthMode(mode) {
+  cloudAuthMode = mode || 'login';
+  const account = $('#cloudAccountName'), email = $('#cloudEmail'), pass = $('#cloudPass');
+  const title = $('#cloudAuthTitle'), hint = $('#cloudAuthHint'), login = $('#cloudLoginBtn');
+  const signup = $('#cloudSignupBtn'), reset = $('#cloudResetBtn'), forget = $('#cloudForgetBtn');
+  if (!account || !email || !pass || !login || !signup) return;
+  const isSignup = cloudAuthMode === 'signup', isReset = cloudAuthMode === 'reset';
+  if (isSignup) {
+    if (account.value.indexOf('@') >= 0 && !email.value) { email.value = account.value; account.value = ''; }
+    account.placeholder = '账号（2–16 位，登录名）';
+  } else if (isReset) {
+    if (account.value.indexOf('@') >= 0 && !email.value) { email.value = account.value; account.value = ''; }
+  } else {
+    if (!account.value && email.value) account.value = email.value;
+    account.placeholder = '账号或邮箱';
+    email.value = '';
+  }
+  email.hidden = !(isSignup || isReset);
+  account.hidden = isReset;
+  pass.hidden = isReset;
+  login.textContent = isSignup ? '注册新账号' : (isReset ? '发送重置邮件' : '登录');
+  signup.textContent = isSignup || isReset ? '返回登录' : '注册';
+  if (reset) reset.hidden = isSignup || isReset;
+  if (forget) forget.hidden = isSignup || isReset;
+  pass.setAttribute('autocomplete', isSignup ? 'new-password' : 'current-password');
+  if (hint) hint.textContent = isSignup
+    ? '账号是登录名；邮箱用于确认和找回密码，注册后点邮件里的确认链接。'
+    : (isReset ? '填注册邮箱，点「发送重置邮件」；邮件里的链接会打开重置页。' : '输入账号或邮箱，再加密码就能登录；没有账号点「注册」。');
+  setCloudMsg($('#cloudMsg'), '');
+}
+function beginResetPassword() {
+  setCloudAuthMode('reset');
+  setCloudMsg($('#cloudMsg'), '填注册邮箱，点「发送重置邮件」。');
+  const email = $('#cloudEmail');
+  if (email) email.focus();
+}
 function cloudAuth(mode) {
   if (!cloudClient) {
     if (!cloudAuthPending) {
@@ -5006,9 +5163,29 @@ function cloudAuth(mode) {
     }
     return;
   }
+  if (cloudAuthBusy) { setCloudMsg($('#cloudMsg'), '正在处理，稍等…'); return; }
   const account = ($('#cloudAccountName').value || '').trim();
   const email = ($('#cloudEmail').value || '').trim();
   const pass = ($('#cloudPass').value || '').trim();
+  const ident = account || email;
+
+  if (mode === 'reset') {
+    const resetEmail = email || (account.indexOf('@') >= 0 ? account : '');
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(resetEmail)) {
+      setCloudMsg($('#cloudMsg'), '填注册邮箱后再发送', 'bad');
+      return;
+    }
+    setCloudMsg($('#cloudMsg'), '正在发送重置邮件…');
+    cloudAuthBusy = true;
+    return cloudClient.auth.resetPasswordForEmail(resetEmail, { redirectTo: APP_PUBLIC_URL }).then(function (res) {
+      cloudAuthBusy = false;
+      if (res.error) { setCloudMsg($('#cloudMsg'), cloudErrText(res.error), 'bad'); return; }
+      setCloudMsg($('#cloudMsg'), '重置邮件已发送。去邮箱点链接设置新密码，再回来登录。', 'ok');
+    }).catch(function (err) {
+      cloudAuthBusy = false;
+      setCloudMsg($('#cloudMsg'), cloudErrText(err), 'bad');
+    });
+  }
 
   if (mode === 'signup') {
     if (!validAccountName(account)) { setCloudMsg($('#cloudMsg'), '账号 2–16 位，可用字母、数字、下划线或中文', 'bad'); return; }
@@ -5033,13 +5210,12 @@ function cloudAuth(mode) {
     return;
   }
 
-  if (!account && !email) { setCloudMsg($('#cloudMsg'), '填账号或邮箱', 'bad'); return; }
+  if (!ident) { setCloudMsg($('#cloudMsg'), '填账号或邮箱', 'bad'); return; }
   if (pass.length < 6) { setCloudMsg($('#cloudMsg'), '密码至少 6 位', 'bad'); return; }
-  if (!account) { signInWithEmail(email, pass); return; }
-  if (account.indexOf('@') >= 0) { signInWithEmail(account, pass); return; }
+  if (ident.indexOf('@') >= 0) { signInWithEmail(ident, pass); return; }
 
   setCloudMsg($('#cloudMsg'), '正在登录…');
-  cloudClient.functions.invoke('login', { body: { account: account, password: pass } }).then(function (res) {
+  cloudClient.functions.invoke('login', { body: { account: ident, password: pass } }).then(function (res) {
     if (res.error) { setCloudMsg($('#cloudMsg'), '账号或密码不正确', 'bad'); return; }
     const d = res.data || {};
     if (d.error) { setCloudMsg($('#cloudMsg'), d.error, 'bad'); return; }
@@ -5053,7 +5229,7 @@ function cloudAuth(mode) {
       refresh_token: session.refresh_token
     }).then(function (r) {
       if (r.error) { setCloudMsg($('#cloudMsg'), '建立登录态失败：' + cloudErrText(r.error), 'bad'); return; }
-      cloudAccountName = account;
+      cloudAccountName = ident;
       setCloudMsg($('#cloudMsg'), '已登录', 'ok');
       renderCloud();
       afterSignIn();
@@ -5103,8 +5279,17 @@ function durationAdvice() {
   return null;
 }
 
+let setAdvancedOpen = false;
 function renderSettings() {
   const st = S.settings;
+  const advBtn = $('#advSetBtn');
+  if (advBtn) {
+    advBtn.textContent = setAdvancedOpen ? '收起更多' : '更多设置';
+    advBtn.setAttribute('aria-expanded', setAdvancedOpen ? 'true' : 'false');
+  }
+  document.querySelectorAll('#view-settings .set-group.is-advanced').forEach(function (g) {
+    g.hidden = !setAdvancedOpen;
+  });
   if ($('#fleetCode')) $('#fleetCode').value = st.fleetCode || '';
   if ($('#fleetNick')) $('#fleetNick').value = st.fleetNick || '';
   $('#durRange').value = st.duration;
@@ -5131,8 +5316,8 @@ function renderSettings() {
   if (snapInfo) {
     const d = snapLabel();
     snapInfo.textContent = d
-      ? '最近一份：' + dayKey(d.getTime()) + ' · 保留最近 3 份，每周自动留一份。'
-      : '每周首次打开自动留一份，保留最近 3 份。';
+      ? '最近一份：' + dayKey(d.getTime()) + ' · 登录合并或云端恢复前也会自动留一份。'
+      : '每周首次打开自动留一份；登录合并或云端恢复前也会留一份。';
   }
   updateAwayTag();
   $('#soundSwitch').setAttribute('aria-checked', st.sound ? 'true' : 'false');
@@ -5718,14 +5903,32 @@ function snapLabel() {
   const last = arr[arr.length - 1];
   return last ? new Date(last.at) : null;
 }
+function saveSyncSnapshot(label) {
+  try {
+    const arr = readSnaps();
+    arr.push({ at: Date.now(), label: label || '同步前', data: JSON.parse(JSON.stringify(S)) });
+    while (arr.length > SNAP_KEEP) arr.shift();
+    localStorage.setItem(SNAP_KEY, JSON.stringify(arr));
+  } catch (err) {}
+}
+function openSyncRestore() {
+  setAdvancedOpen = true;
+  renderSettings();
+  setView('settings');
+  setTimeout(function () {
+    const btn = $('#snapBtn');
+    if (btn) btn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, 260);
+}
 function restoreSnapshot() {
   const arr = readSnaps();
   const last = arr[arr.length - 1];
   if (!last) { showToast('还没有可用的自动快照。'); return; }
   const day = dayKey(last.at);
+  const label = last.label ? '（' + last.label + '）' : '';
   openModal({
     title: '恢复自动快照？',
-    body: '将用 ' + day + ' 的快照替换本机当前数据（' + S.sessions.length + ' 条航段、' + S.missions.length + ' 个任务）。恢复前会再备份一份当前存档。',
+    body: '将用 ' + day + label + ' 的快照替换本机当前数据（' + S.sessions.length + ' 条航段、' + S.missions.length + ' 个任务）。恢复前会再备份一份当前存档。',
     confirmText: '恢复快照',
     cancelText: '取消',
     onConfirm: function () {
@@ -6063,15 +6266,38 @@ function bindEvents() {
     renderCloud();
     showToast('云端项目已连接，登录后开始同步');
   });
+  const syncChip = $('#syncChip');
+  if (syncChip) {
+    syncChip.addEventListener('click', openSyncRestore);
+    syncChip.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openSyncRestore(); }
+    });
+  }
+  document.querySelectorAll('#quickStart [data-quick-title]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      quickStartTemplate(btn.dataset.quickTitle, parseInt(btn.dataset.quickMin, 10));
+    });
+  });
+  const advSetBtn = $('#advSetBtn');
+  if (advSetBtn) advSetBtn.addEventListener('click', function () {
+    setAdvancedOpen = !setAdvancedOpen;
+    renderSettings();
+    if (setAdvancedOpen) setTimeout(function () { $('#fleetGroup').scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 50);
+  });
   const cloudLogin = $('#cloudLoginBtn');
-  if (cloudLogin) cloudLogin.addEventListener('click', function () { cloudAuth('signin'); });
+  if (cloudLogin) cloudLogin.addEventListener('click', function () { cloudAuth(cloudAuthMode === 'signup' ? 'signup' : (cloudAuthMode === 'reset' ? 'reset' : 'signin')); });
   const cloudSignup = $('#cloudSignupBtn');
-  if (cloudSignup) cloudSignup.addEventListener('click', function () { cloudAuth('signup'); });
+  if (cloudSignup) cloudSignup.addEventListener('click', function () {
+    setCloudAuthMode(cloudAuthMode === 'login' ? 'signup' : 'login');
+  });
+  const cloudReset = $('#cloudResetBtn');
+  if (cloudReset) cloudReset.addEventListener('click', beginResetPassword);
   const cloudForget = $('#cloudForgetBtn');
   if (cloudForget) cloudForget.addEventListener('click', function () {
     writeCloudCfg(null);
     cloudClient = null;
     cloudUser = null;
+    setCloudAuthMode('login');
     renderCloud();
     showToast('已断开云端项目');
   });
@@ -6089,6 +6315,7 @@ function bindEvents() {
       cloudMergePending = false;
       syncStatus = { state: 'idle', text: '' };
       cancelCloudPush();
+      setCloudAuthMode('login');
       renderCloud();
       showToast('已退出登录，本地数据保留');
     });
@@ -7538,7 +7765,6 @@ function setupInstallRow() {
 }
 
 function boot() {
-  buildStarmap();
   initStarfield();
   initScene();
   bindEvents();
@@ -7564,7 +7790,8 @@ function boot() {
 
   renderAll();
   setView(currentView());
-  setTimeout(function () { loginGuideReady = true; renderLoginGuide(); }, 1500);
+  if (!cloudCfg) setTimeout(markLoginGuideReady, 1200);
+  else setTimeout(markLoginGuideReady, 2600);
   if (pendingDraft) setTimeout(function () { promptDraft(pendingDraft); }, 520);
 
   playIntro();
