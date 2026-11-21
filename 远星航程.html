@@ -375,6 +375,76 @@ h1,h2,h3,h4{font-family:var(--font-serif);font-weight:600;letter-spacing:.01em;m
 }
 .shipmark{position:absolute;top:64px;transform:translate(-50%,-50%);transition:left .6s cubic-bezier(.22,1,.36,1)}
 .shipmark svg{width:16px;height:16px;stroke:var(--beacon);stroke-width:1.6;fill:none}
+
+/* 航程回看 */
+.jr-panel{margin-top:16px;padding-top:14px;border-top:1px solid rgba(131,153,172,.14)}
+.jr-panel.is-reveal{animation:jrPanelIn .58s var(--e-out) both}
+@keyframes jrPanelIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.jr-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:9px}
+.jr-kicker{font-family:var(--font-mono);font-size:9.5px;letter-spacing:.16em;color:var(--beacon)}
+.jr-counter{font-family:var(--font-mono);font-size:10px;color:var(--dust-dim);letter-spacing:.06em}
+.jr-frame{position:relative;--jr-shift:0px}
+.jr-stage{position:relative;width:100%;aspect-ratio:2.2/1;min-height:148px;max-height:310px;overflow:hidden;
+  border:1px solid rgba(131,153,172,.2);border-radius:10px;background:linear-gradient(135deg,#0B1A26,#04090E);
+  touch-action:pan-y;user-select:none;cursor:grab}
+.jr-stage:active{cursor:grabbing}
+.jr-stage:focus-visible{outline:2px solid rgba(240,163,62,.55);outline-offset:3px}
+.jr-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 42%;
+  opacity:0;filter:blur(4px);
+  transform:translateX(calc(var(--jr-enter,0px) + var(--jr-shift,0px))) scale(1.06);
+  transition:opacity .48s var(--e-out),transform .95s var(--e-out),filter .48s var(--e-out);
+  pointer-events:none;user-select:none}
+.jr-img.is-on{opacity:1;filter:blur(0);transform:translateX(var(--jr-shift,0px)) scale(1)}
+.jr-frame.is-dragging .jr-img{transition:opacity .48s var(--e-out),filter .48s var(--e-out)}
+.jr-shade{position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(180deg,rgba(5,10,17,.02) 22%,rgba(5,10,17,.24) 52%,rgba(4,9,14,.92) 100%),
+    linear-gradient(90deg,rgba(4,9,14,.55),transparent 36%,transparent 72%,rgba(4,9,14,.32))}
+.jr-copy{position:absolute;left:14px;right:14px;bottom:11px;z-index:2;min-width:0;pointer-events:none}
+.jr-copy.is-next{animation:jrCopyNext .5s var(--e-out) both}
+.jr-copy.is-prev{animation:jrCopyPrev .5s var(--e-out) both}
+@keyframes jrCopyNext{from{opacity:.18;transform:translateX(14px)}to{opacity:1;transform:translateX(0)}}
+@keyframes jrCopyPrev{from{opacity:.18;transform:translateX(-14px)}to{opacity:1;transform:translateX(0)}}
+.jr-sector{display:block;font-family:var(--font-mono);font-size:9.5px;letter-spacing:.13em;color:#F6C88C;text-transform:uppercase}
+.jr-title{margin-top:4px;font-size:20px;line-height:1.2;letter-spacing:.01em;color:var(--star);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:var(--font-serif,var(--font-sans))}
+.jr-sub{margin-top:4px;font-size:11px;color:var(--dust);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.jr-stats{display:flex;align-items:center;gap:8px;margin-top:7px;font-family:var(--font-mono);font-size:10px;
+  color:var(--dust);letter-spacing:.02em}
+.jr-stats span:not(:last-child)::after{content:"·";margin-left:8px;color:var(--dust-dim)}
+.jr-status{color:#F6C88C}
+.jr-status.is-abort{color:#E99477}
+.jr-arrow{position:absolute;top:50%;z-index:2;width:30px;height:30px;border:1px solid rgba(233,241,247,.16);
+  border-radius:50%;background:rgba(5,10,17,.5);color:var(--dust);font-family:var(--font-mono);font-size:17px;
+  line-height:1;display:grid;place-items:center;cursor:pointer;transform:translateY(-50%);
+  transition:border-color .2s var(--e-soft),color .2s var(--e-soft),background .2s var(--e-soft),opacity .2s}
+.jr-arrow:hover{border-color:rgba(240,163,62,.55);color:var(--beacon);background:rgba(5,10,17,.72)}
+.jr-arrow:disabled{opacity:.22;cursor:default}
+.jr-arrow.prev{left:9px}
+.jr-arrow.next{right:9px}
+@media (max-width:620px){
+  .jr-arrow{top:9px;transform:none}
+}
+.jr-control{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:9px;margin-top:8px}
+.jr-end{font-family:var(--font-mono);font-size:9px;color:var(--dust-dim);letter-spacing:.04em;white-space:nowrap}
+#jrRange{height:28px;--jr-progress:0%}
+#jrRange:disabled{opacity:.42}
+#jrRange::-webkit-slider-runnable-track{height:2px;border-radius:0;
+  background:linear-gradient(90deg,var(--beacon) var(--jr-progress,0%),rgba(131,153,172,.26) var(--jr-progress,0%))}
+#jrRange::-moz-range-track{height:2px;border-radius:0;
+  background:linear-gradient(90deg,var(--beacon) var(--jr-progress,0%),rgba(131,153,172,.26) var(--jr-progress,0%))}
+#jrRange::-webkit-slider-thumb{width:15px;height:15px;margin-top:-6.5px;border:1px solid var(--beacon);
+  background:var(--void);box-shadow:0 0 0 3px rgba(240,163,62,.1)}
+#jrRange::-moz-range-thumb{width:13px;height:13px;border:1px solid var(--beacon);background:var(--void);
+  box-shadow:0 0 0 3px rgba(240,163,62,.1)}
+#jrRange:active::-webkit-slider-thumb{transform:scale(1.22);box-shadow:0 0 0 5px rgba(240,163,62,.16)}
+#jrRange:active::-moz-range-thumb{transform:scale(1.18);box-shadow:0 0 0 5px rgba(240,163,62,.16)}
+.jr-hint{margin:1px 0 0;font-size:10px;line-height:1.5;color:var(--dust-dim);text-align:center}
+@media (prefers-reduced-motion:reduce){
+  .jr-img{transition:none}
+  .jr-panel.is-reveal,.jr-copy.is-next,.jr-copy.is-prev{animation:none}
+  .jr-frame.is-dragging .jr-img{transition:none}
+}
+
 .stat-row{display:grid;grid-template-columns:repeat(2,1fr);gap:1px;background:var(--steel-soft);
   border:1px solid var(--steel-soft);margin-top:24px}
 @media (min-width:620px){.stat-row{grid-template-columns:repeat(4,1fr)}}
@@ -1540,6 +1610,33 @@ html.is-vt .view.is-active{animation:none!important}
         </div>
         <div class="starmap" id="starmap">
           <div class="track"><div class="track-fill" id="trackFill" style="width:0"></div></div>
+        </div>
+        <div class="jr-panel" id="journeyReel" hidden>
+          <div class="jr-head">
+            <span class="jr-kicker">RECAP · 航程回看</span>
+            <span class="jr-counter" id="jrCounter">—</span>
+          </div>
+          <div class="jr-frame">
+            <div class="jr-stage" id="jrStage" role="group" tabindex="0" aria-label="航程回看，可左右滑动或使用方向键">
+              <img class="jr-img is-on" id="jrImgA" alt="" draggable="false">
+              <img class="jr-img" id="jrImgB" alt="" draggable="false">
+              <div class="jr-shade" aria-hidden="true"></div>
+              <button class="jr-arrow prev" id="jrPrev" type="button" aria-label="上一段航程">‹</button>
+              <button class="jr-arrow next" id="jrNext" type="button" aria-label="下一段航程">›</button>
+            </div>
+            <div class="jr-copy">
+              <span class="jr-sector" id="jrSector">—</span>
+              <div class="jr-title" id="jrTitle">—</div>
+              <div class="jr-sub" id="jrSub">—</div>
+              <div class="jr-stats"><span id="jrLy">+0 ly</span><span id="jrDur">00:00</span><span class="jr-status" id="jrStatus">抵达</span></div>
+            </div>
+          </div>
+          <div class="jr-control">
+            <span class="jr-end" id="jrStart">最早</span>
+            <input id="jrRange" type="range" min="0" max="0" value="0" step="1" aria-label="回看航程">
+            <span class="jr-end" id="jrEnd">最近</span>
+          </div>
+          <p class="jr-hint">拖动滑杆或左右滑动画面，回看之前每一段航程。</p>
         </div>
       </section>
 
@@ -3470,6 +3567,128 @@ function renderStarmap() {
   $('#mapMeta').textContent = next
     ? '累计 ' + m.totalLy + ' 光年 · 距 ' + next.name + ' 还有 ' + (next.need - m.totalLy) + ' ly'
     : '累计 ' + m.totalLy + ' 光年 · 已抵达航线末端';
+  renderJourneyReel();
+}
+
+/* ---------- 航程回看 ---------- */
+let reelSessions = [];
+let reelIndex = -1;
+let reelSig = '';
+let reelDir = 1;
+let reelKey = '';
+let reelRevealed = false;
+
+function reelDay(ts) {
+  const d = new Date(ts);
+  return pad2(d.getMonth() + 1) + '.' + pad2(d.getDate());
+}
+function reelImageInfo(session) {
+  const m = metricsAt(session);
+  const sector = SECTORS[m.sectorIdx] || SECTORS[0];
+  const img = document.querySelector('#scopeWin img[data-sector="' + sector.n + '"]');
+  return { sector: sector, src: img ? img.src : '' };
+}
+function setReelImage(src, alt, dir) {
+  const a = $('#jrImgA'), b = $('#jrImgB');
+  if (!a || !b) return;
+  const current = a.classList.contains('is-on') ? a : b;
+  if (current.getAttribute('src') === src) { current.alt = alt; return; }
+  const next = current === a ? b : a;
+  const forward = dir >= 0;
+  next.style.setProperty('--jr-enter', forward ? '12px' : '-12px');
+  current.style.setProperty('--jr-enter', forward ? '-12px' : '12px');
+  if (src) next.src = src; else next.removeAttribute('src');
+  next.alt = alt;
+  next.classList.add('is-on');
+  current.classList.remove('is-on');
+}
+function setReelIndex(value) {
+  if (!reelSessions.length) return;
+  const idx = clamp(Math.round(value), 0, reelSessions.length - 1);
+  if (idx === reelIndex) return;
+  reelDir = idx > reelIndex ? 1 : -1;
+  reelIndex = idx;
+  renderJourneyReel();
+}
+function renderJourneyReel() {
+  const box = $('#journeyReel');
+  if (!box) return;
+  const sessions = S.sessions.filter(function (s) { return s.end; })
+    .sort(function (a, b) { return a.end - b.end; });
+  const sig = sessions.map(function (s) {
+    return [s.id, s.end, s.focusSec, s.completed ? 1 : 0, s.taskTitle || ''].join(':');
+  }).join('|');
+
+  if (sig !== reelSig) {
+    const selectedId = reelSessions[reelIndex] ? reelSessions[reelIndex].id : '';
+    const oldIndex = reelIndex;
+    const wasLatest = reelIndex < 0 || reelIndex >= reelSessions.length - 1;
+    reelSessions = sessions;
+    reelSig = sig;
+    let idx = selectedId ? sessions.findIndex(function (s) { return s.id === selectedId; }) : -1;
+    if (wasLatest || idx < 0) idx = sessions.length - 1;
+    reelIndex = idx;
+    if (oldIndex >= 0 && idx !== oldIndex) reelDir = idx > oldIndex ? 1 : -1;
+  }
+
+  if (!reelSessions.length) {
+    box.hidden = true;
+    return;
+  }
+  if (reelIndex < 0 || reelIndex >= reelSessions.length) reelIndex = reelSessions.length - 1;
+  box.hidden = false;
+  if (!reelRevealed) {
+    box.classList.add('is-reveal');
+    reelRevealed = true;
+  }
+
+  const s = reelSessions[reelIndex];
+  const nextKey = String(s.id || '') + ':' + s.end;
+  const changed = !!reelKey && nextKey !== reelKey;
+  const info = reelImageInfo(s);
+  const sector = info.sector;
+  const title = s.taskTitle || '自由航行';
+  const status = s.completed ? '抵达' : '返航';
+  const dur = Math.max(0, Math.round(s.focusSec || 0));
+  const ly = s.completed ? Math.max(0, Math.round(dur / 60)) : 0;
+  const sub = reelDay(s.end) + ' ' + weekdayCN(s.end) + ' ' + clockOf(s.end) + ' · ' +
+    (s.reason ? status + ' / ' + s.reason : status);
+
+  $('#jrCounter').textContent = pad2(reelIndex + 1) + ' / ' + pad2(reelSessions.length);
+  $('#jrSector').textContent = pad2(sector.n) + ' · ' + sector.name;
+  $('#jrTitle').textContent = title;
+  $('#jrSub').textContent = sub;
+  $('#jrLy').textContent = '+' + ly + ' ly';
+  $('#jrDur').textContent = fmtClock(dur);
+  const statusEl = $('#jrStatus');
+  statusEl.textContent = status;
+  statusEl.classList.toggle('is-abort', !s.completed);
+  setReelImage(info.src, sector.name + ' · ' + title, reelDir);
+  const copy = box.querySelector('.jr-copy');
+  if (copy && changed) {
+    copy.classList.remove('is-next', 'is-prev');
+    void copy.offsetWidth;
+    copy.classList.add(reelDir > 0 ? 'is-next' : 'is-prev');
+  }
+  reelKey = nextKey;
+
+  const range = $('#jrRange');
+  range.max = String(Math.max(0, reelSessions.length - 1));
+  range.value = String(reelIndex);
+  const pct = reelSessions.length > 1 ? (reelIndex / (reelSessions.length - 1)) * 100 : 0;
+  range.style.setProperty('--jr-progress', pct.toFixed(1) + '%');
+  range.setAttribute('aria-valuetext',
+    '第 ' + (reelIndex + 1) + ' 段，共 ' + reelSessions.length + ' 段，' +
+    reelDay(s.end) + '，' + title + '，' + status + '，' + fmtClock(dur));
+  range.disabled = reelSessions.length <= 1;
+  const hint = box.querySelector('.jr-hint');
+  if (hint) hint.textContent = reelSessions.length <= 1
+    ? '完成更多航段后，可以在这里回看每一段航程。'
+    : '拖动滑杆或左右滑动画面，回看之前每一段航程。';
+  $('#jrStart').textContent = reelDay(reelSessions[0].end);
+  $('#jrEnd').textContent = reelDay(reelSessions[reelSessions.length - 1].end);
+  $('#jrPrev').disabled = reelIndex <= 0;
+  $('#jrNext').disabled = reelIndex >= reelSessions.length - 1;
 }
 
 /* ---------- 航行台 ---------- */
@@ -7355,6 +7574,69 @@ function bindEvents() {
       if (on && on.dataset.id) runCommand(on.dataset.id);
     }
   }, true);
+
+  const jrRange = $('#jrRange');
+  if (jrRange) {
+    jrRange.addEventListener('input', function () {
+      setReelIndex(Number(jrRange.value));
+    });
+  }
+  const jrPrev = $('#jrPrev'), jrNext = $('#jrNext');
+  if (jrPrev) jrPrev.addEventListener('click', function () { setReelIndex(reelIndex - 1); });
+  if (jrNext) jrNext.addEventListener('click', function () { setReelIndex(reelIndex + 1); });
+  const jrStage = $('#jrStage');
+  const jrFrame = document.querySelector('#journeyReel .jr-frame');
+  if (jrStage) {
+    let reelStartX = null;
+    let reelDragging = false;
+    let wheelAt = 0;
+    const resetReelDrag = function () {
+      reelStartX = null;
+      reelDragging = false;
+      if (!jrFrame) return;
+      jrFrame.classList.remove('is-dragging');
+      jrFrame.style.setProperty('--jr-shift', '0px');
+    };
+    jrStage.addEventListener('pointerdown', function (e) {
+      if (e.target.closest('.jr-arrow')) return;
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      reelStartX = e.clientX;
+      try { jrStage.setPointerCapture(e.pointerId); } catch (err) {}
+    });
+    jrStage.addEventListener('pointermove', function (e) {
+      if (reelStartX === null) return;
+      const dx = e.clientX - reelStartX;
+      if (Math.abs(dx) < 2) return;
+      reelDragging = true;
+      if (jrFrame) {
+        jrFrame.classList.add('is-dragging');
+        jrFrame.style.setProperty('--jr-shift', clamp(dx * 0.2, -8, 8).toFixed(1) + 'px');
+      }
+    });
+    jrStage.addEventListener('pointerup', function (e) {
+      if (reelStartX === null) return;
+      const dx = e.clientX - reelStartX;
+      const wasDragging = reelDragging;
+      resetReelDrag();
+      if (Math.abs(dx) >= 36 || (wasDragging && Math.abs(dx) >= 22)) {
+        setReelIndex(reelIndex + (dx < 0 ? 1 : -1));
+      }
+    });
+    jrStage.addEventListener('pointercancel', resetReelDrag);
+    jrStage.addEventListener('wheel', function (e) {
+      const dx = e.deltaX;
+      if (Math.abs(dx) < Math.abs(e.deltaY) || Math.abs(dx) < 8) return;
+      e.preventDefault();
+      if (Date.now() < wheelAt) return;
+      wheelAt = Date.now() + 360;
+      setReelIndex(reelIndex + (dx > 0 ? 1 : -1));
+    }, { passive: false });
+    jrStage.addEventListener('keydown', function (e) {
+      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+      e.preventDefault();
+      setReelIndex(reelIndex + (e.key === 'ArrowRight' ? 1 : -1));
+    });
+  }
 }
 
 /* ---------- 启动 ---------- */
