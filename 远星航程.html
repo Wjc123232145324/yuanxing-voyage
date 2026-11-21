@@ -33,7 +33,6 @@
   --font-sans:"Noto Sans CJK SC","PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;
   --font-mono:ui-monospace,"SFMono-Regular","DejaVu Sans Mono","Menlo","Consolas",monospace;
   --pad:18px;
-  --line:1px solid var(--steel);
 }
 *{box-sizing:border-box}
 [hidden]{display:none !important}
@@ -213,8 +212,6 @@ h1,h2,h3,h4{font-family:var(--font-serif);font-weight:600;letter-spacing:.01em;m
   transition:color .28s var(--e-soft),border-color .28s var(--e-soft),background .28s var(--e-soft),transform .18s var(--e-spring)}
 .rest-chips button:hover{color:var(--star);border-color:rgba(131,153,172,.46);transform:translateY(-1px)}
 .rest-chips button[aria-pressed="true"]{color:#FFD9A8;border-color:rgba(240,163,62,.55);background:rgba(240,163,62,.12)}
-body.is-docked .dial-state{border-color:rgba(240,163,62,.34);color:#F6C88C}
-body.is-docked .dial-state::before{opacity:1;animation:live-blink 2.6s ease-in-out infinite}
 #abortBtn{position:relative;overflow:hidden;padding-left:20px;
   border-color:rgba(217,91,68,.42);color:#E99477;background:rgba(217,91,68,.05)}
 #abortBtn::before{content:"";position:absolute;left:0;top:0;bottom:0;width:6px;
@@ -596,16 +593,38 @@ body.is-cruising .scope-win img.is-on{animation:scope-drift 22s ease-in-out infi
 body.is-cruising .scope-scan{animation:scope-scan 7s linear infinite}
 @keyframes scope-scan{0%{top:5%;opacity:0}10%{opacity:.6}90%{opacity:.6}100%{top:95%;opacity:0}}
 
-/* 状态灯 */
-.dial-state{display:inline-flex;align-items:center;gap:6px;height:22px;padding:0 8px;border-radius:2px;
-  border:1px solid rgba(233,241,247,.14);background:rgba(5,10,17,.5);font-family:var(--font-mono);
-  font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--dust);
-  transition:border-color .2s linear,color .2s linear}
-.dial-state::before{content:"";width:5px;height:5px;border-radius:50%;background:var(--beacon);
-  opacity:.32;transition:opacity .2s linear}
-body.is-cruising .dial-state{border-color:rgba(240,163,62,.42);color:var(--beacon)}
-body.is-cruising .dial-state::before{opacity:1;animation:live-blink 1.7s ease-in-out infinite}
+/* 状态舱：Dynamic Island 式胶囊，状态切换时展开 */
+.status-island{display:inline-flex;align-items:center;gap:7px;height:28px;padding:0 9px;border-radius:999px;
+  border:1px solid rgba(233,241,247,.13);background:rgba(5,10,17,.58);font-family:var(--font-mono);
+  font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--dust);overflow:hidden;
+  max-width:102px;white-space:nowrap;
+  transition:max-width .5s var(--e-spring),border-color .3s var(--e-soft),color .3s var(--e-soft),
+    background .3s var(--e-soft),box-shadow .3s var(--e-soft)}
+.si-orb{width:6px;height:6px;border-radius:50%;background:var(--beacon);opacity:.3;flex:none;
+  transition:opacity .3s var(--e-soft),box-shadow .3s var(--e-soft)}
+.si-label{font-weight:500;letter-spacing:.16em}
+.si-extra{display:flex;align-items:center;gap:6px;max-width:0;opacity:0;overflow:hidden;
+  transition:max-width .5s var(--e-spring),opacity .3s var(--e-soft)}
+.si-ring{width:13px;height:13px;border-radius:50%;flex:none;
+  background:conic-gradient(var(--beacon) calc(var(--p,0) * 360deg),rgba(233,241,247,.14) 0);
+  -webkit-mask:radial-gradient(circle at center,transparent 38%,#000 40%);
+  mask:radial-gradient(circle at center,transparent 38%,#000 40%)}
+.si-time{font-size:10px;letter-spacing:.02em;color:var(--star);font-variant-numeric:tabular-nums}
+.status-island[data-state="idle"] .si-orb{opacity:.28}
+.status-island[data-state="cruising"],
+.status-island[data-state="hold"],
+.status-island[data-state="docked"]{max-width:178px}
+.status-island[data-state="cruising"] .si-extra,
+.status-island[data-state="hold"] .si-extra,
+.status-island[data-state="docked"] .si-extra{max-width:108px;opacity:1}
+.status-island[data-state="cruising"]{border-color:rgba(240,163,62,.42);color:var(--beacon);background:rgba(240,163,62,.055)}
+.status-island[data-state="cruising"] .si-orb{opacity:1;animation:live-blink 1.7s ease-in-out infinite}
+.status-island[data-state="hold"]{border-color:rgba(217,91,68,.4);color:#E99477;background:rgba(217,91,68,.045)}
+.status-island[data-state="hold"] .si-orb{background:#D95B44;opacity:1}
+.status-island[data-state="docked"]{border-color:rgba(240,163,62,.34);color:#F6C88C;background:rgba(240,163,62,.04)}
+.status-island[data-state="docked"] .si-orb{opacity:1;animation:live-blink 2.6s ease-in-out infinite}
 @keyframes live-blink{0%,100%{opacity:1}50%{opacity:.28}}
+
 
 /* 航程图航线脉冲 */
 body.is-cruising .track-fill{animation:track-breathe 3.4s ease-in-out infinite}
@@ -728,12 +747,12 @@ body.is-reveal .stat-row{animation:panel-in .62s .24s var(--e-out) both}
 
 /* ===== 柔化一切硬边框：圆角 + 内光 + 无框 ===== */
 :root{
-  --r-card:16px; --r-in:10px;
+  --r-card:16px;
   --card-bg:linear-gradient(180deg,rgba(18,37,52,.72),rgba(8,18,27,.92));
   --card-shadow:inset 0 1px 0 rgba(255,255,255,.05), 0 22px 44px -34px rgba(0,0,0,.92);
 }
 .console,.brief,.panel,.starmap-panel,.chart-card,.set-group,.stats-grid,.badge,.dialog,
-.mission-item,.log-item{
+.mission-item{
   border:0 !important;border-radius:var(--r-card);
   background:var(--card-bg) !important;
   box-shadow:var(--card-shadow);
@@ -774,10 +793,10 @@ input:focus,select:focus,.cloud-input:focus{box-shadow:inset 0 0 0 1px rgba(240,
 .switch{border:0;border-radius:999px;background:rgba(11,24,34,.7);box-shadow:inset 0 1px 3px rgba(0,0,0,.4)}
 .topbar{border-bottom:0 !important;box-shadow:0 1px 0 rgba(131,153,172,.08)}
 .rail{border-top:0 !important;box-shadow:0 -1px 0 rgba(131,153,172,.08);background:rgba(8,17,24,.9)}
-.dial-state,.toast,.tag,th{border-radius:999px}
-.badge:hover,.mission-item:hover,.log-item:hover{transform:translateY(-2px);
+.toast,.tag,th{border-radius:999px}
+.badge:hover,.mission-item:hover{transform:translateY(-2px);
   box-shadow:var(--card-shadow),0 12px 26px -20px rgba(0,0,0,.9)}
-.badge,.mission-item,.log-item{transition:transform .3s var(--e-out),box-shadow .3s var(--e-out),background .3s var(--e-soft)}
+.badge,.mission-item{transition:transform .3s var(--e-out),box-shadow .3s var(--e-out),background .3s var(--e-soft)}
 
 
 /* ===== 收尾：提示条、读数格、呼吸光 ===== */
@@ -787,8 +806,7 @@ input:focus,select:focus,.cloud-input:focus{box-shadow:inset 0 0 0 1px rgba(240,
 .readout{border:0 !important;border-radius:12px;background:rgba(13,26,36,.55);padding:14px 14px 12px}
 .readout + .readout{margin-left:0}
 .readouts{background:none !important;border:0 !important;gap:10px !important}
-.log-item,.mission-item,.badge{border:0 !important;border-radius:14px;background:rgba(13,26,36,.55) !important}
-.log-item{border-bottom:0 !important}
+.mission-item,.badge{border:0 !important;border-radius:14px;background:rgba(13,26,36,.55) !important}
 .set-group .row{border-bottom:0 !important}
 @keyframes halo-breathe{0%,100%{opacity:.5}50%{opacity:.92}}
 @keyframes btn-glow{0%,100%{filter:drop-shadow(0 8px 16px rgba(240,163,62,.18))}
@@ -1105,6 +1123,95 @@ body.theme-cb{--beacon:#58B6E0;--beacon-deep:#1D5D78;--flare:#D97AB2}
 
 .fleet-main{flex:1;min-width:0}
 .fleet-sub{display:flex;gap:6px;margin-top:2px}
+/* ===== v39：状态舱 / 快速命令 / 视图转场 / 热力生长 / 呼吸环 ===== */
+.cmd-trigger{height:32px;padding:0 10px;border-radius:8px;border:1px solid rgba(131,153,172,.22);
+  background:rgba(8,16,24,.55);font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;
+  color:var(--dust);cursor:pointer;flex:none;transition:border-color .22s var(--e-soft),color .22s var(--e-soft),
+    background .22s var(--e-soft),transform .16s var(--e-spring)}
+.cmd-trigger:hover{border-color:rgba(240,163,62,.45);color:var(--beacon);background:rgba(240,163,62,.06)}
+.cmd-trigger:active{transform:scale(.95)}
+
+#cmdModal{position:fixed;inset:0;z-index:90;display:grid;place-items:start center;padding:12vh 14px 24px;
+  background:radial-gradient(80% 60% at 50% 0%,rgba(5,10,17,.62),rgba(2,5,9,.86));
+  -webkit-backdrop-filter:blur(16px) saturate(.82);backdrop-filter:blur(16px) saturate(.82);
+  opacity:0;pointer-events:none;transition:opacity .22s var(--e-soft)}
+#cmdModal[hidden]{display:none}
+#cmdModal.is-open{opacity:1;pointer-events:auto}
+.cmd-panel{width:min(560px,calc(100vw - 28px));border:1px solid rgba(240,163,62,.24);border-radius:16px;
+  background:linear-gradient(180deg,rgba(12,22,32,.98),rgba(5,10,17,.98));
+  box-shadow:0 26px 80px rgba(0,0,0,.55),0 0 0 1px rgba(233,241,247,.03) inset;
+  overflow:hidden;transform:translateY(-10px) scale(.985);opacity:.6;
+  transition:transform .34s var(--e-spring),opacity .24s var(--e-soft)}
+#cmdModal.is-open .cmd-panel{transform:none;opacity:1}
+.cmd-head{display:flex;align-items:center;gap:10px;padding:13px 15px;border-bottom:1px solid rgba(131,153,172,.14)}
+.cmd-glyph{font-family:var(--font-mono);font-size:12px;color:var(--beacon);letter-spacing:.12em}
+#cmdInput{flex:1;min-width:0;height:30px;border:0;background:transparent;color:var(--star);
+  font-size:15px;letter-spacing:.02em;outline:none;box-shadow:none}
+#cmdInput::placeholder{color:var(--dust-dim);font-size:13px}
+.cmd-esc{font-family:var(--font-mono);font-size:9px;color:var(--dust-dim);border:1px solid rgba(131,153,172,.2);
+  border-radius:5px;padding:3px 6px}
+.cmd-list{padding:7px 7px 9px;max-height:min(48vh,390px);overflow:auto}
+.cmd-item{display:grid;grid-template-columns:26px 1fr auto;align-items:center;gap:9px;
+  padding:10px 11px;border-radius:9px;cursor:pointer;color:var(--dust);
+  transition:background .18s var(--e-soft),color .18s var(--e-soft),transform .18s var(--e-out)}
+.cmd-item:hover,.cmd-item.is-on{background:rgba(240,163,62,.07);color:var(--star)}
+.cmd-item.is-on{box-shadow:inset 2px 0 0 var(--beacon);transform:translateX(1px)}
+.cmd-ico{width:24px;height:24px;border-radius:7px;display:grid;place-items:center;
+  font-family:var(--font-mono);font-size:11px;color:var(--beacon);background:rgba(240,163,62,.06);
+  border:1px solid rgba(240,163,62,.13)}
+.cmd-copy{min-width:0}
+.cmd-label{display:block;font-size:13.5px;color:inherit;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cmd-sub{display:block;font-size:10.5px;color:var(--dust-dim);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cmd-key{font-family:var(--font-mono);font-size:9px;color:var(--dust-dim);letter-spacing:.06em}
+.cmd-empty{padding:26px 14px;text-align:center;color:var(--dust-dim);font-size:12.5px}
+.cmd-foot{margin:0;padding:8px 15px 10px;border-top:1px solid rgba(131,153,172,.12);
+  font-family:var(--font-mono);font-size:9.5px;color:var(--dust-dim);letter-spacing:.04em}
+@media (max-width:600px){
+  #cmdModal{place-items:end center;padding:14px 10px 14px}
+  .cmd-panel{width:calc(100vw - 20px);border-radius:16px 16px 12px 12px}
+  .cmd-list{max-height:52vh}
+}
+
+.ambient-wave{display:flex;align-items:center;gap:9px;margin:8px 2px 0;min-height:20px}
+.ambient-wave[hidden]{display:none!important}
+.aw-key{font-family:var(--font-mono);font-size:9px;letter-spacing:.14em;color:var(--dust-dim);flex:none}
+.aw-bars{display:flex;align-items:flex-end;gap:2px;height:18px;flex:1;max-width:210px;overflow:hidden}
+.aw-bars i{width:2px;height:100%;border-radius:2px;background:linear-gradient(180deg,var(--beacon),rgba(240,163,62,.18));
+  transform:scaleY(.28);transform-origin:bottom;opacity:.72;transition:transform .12s linear,opacity .2s linear}
+.aw-bars i:nth-child(3n){opacity:.9}
+.aw-label{font-family:var(--font-mono);font-size:9px;color:var(--beacon);letter-spacing:.08em;flex:none;opacity:.8}
+
+.rest-breath{position:absolute;inset:0;z-index:2;display:grid;place-items:center;pointer-events:none;
+  opacity:0;transition:opacity .5s var(--e-soft)}
+body.is-docked .rest-breath{opacity:1}
+.rb-halo{width:128px;height:128px;border-radius:50%;grid-area:1/1;border:1px solid rgba(240,163,62,.24);
+  background:radial-gradient(circle,rgba(240,163,62,.08),transparent 66%);
+  box-shadow:0 0 30px rgba(240,163,62,.08),inset 0 0 22px rgba(240,163,62,.05);
+  animation:restBreath 10s ease-in-out infinite}
+.rb-core{width:5px;height:5px;border-radius:50%;grid-area:1/1;background:var(--beacon);
+  box-shadow:0 0 10px rgba(240,163,62,.5);opacity:.5}
+.rb-label{grid-area:1/1;align-self:end;margin-bottom:-24px;font-family:var(--font-mono);font-size:9px;
+  letter-spacing:.2em;color:var(--dust-dim);opacity:.65}
+@keyframes restBreath{0%{transform:scale(.78);opacity:.22}40%{transform:scale(1.16);opacity:.72}100%{transform:scale(.78);opacity:.22}}
+
+.heat-cell{transition:transform .18s var(--e-out),box-shadow .18s var(--e-soft),filter .18s var(--e-soft)}
+.heat-cell:hover{transform:translateY(-2px) scale(1.03);box-shadow:0 4px 14px rgba(240,163,62,.13);filter:brightness(1.08)}
+.heat-cell.heat-anim{animation:heatGrow .5s var(--e-out) both;animation-delay:calc(var(--i,0) * 14ms)}
+@keyframes heatGrow{from{opacity:0;transform:translateY(5px) scale(.9)}to{opacity:1;transform:none}}
+
+.view.is-active{view-transition-name:page}
+@supports (view-transition-name: page){.view.is-active{animation:none}}
+html.is-vt .view.is-active{animation:none!important}
+::view-transition-old(page){animation:yxPageOut .24s var(--e-soft) both}
+::view-transition-new(page){animation:yxPageIn .44s var(--e-out) both}
+@keyframes yxPageOut{to{opacity:0;transform:translateY(-7px) scale(.992)}}
+@keyframes yxPageIn{from{opacity:0;transform:translateY(10px) scale(.996)}}
+
+@media (prefers-reduced-motion: reduce){
+  .heat-cell.heat-anim{animation:none}
+  .rb-halo{animation:none}
+  .status-island,.status-island .si-extra,.cmd-panel{transition-duration:.001ms}
+}
 </style>
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 </head>
@@ -1183,6 +1290,7 @@ body.theme-cb{--beacon:#58B6E0;--beacon-deep:#1D5D78;--flare:#D97AB2}
         <svg viewBox="0 0 24 24" aria-hidden="true" id="muteIcon"><path d="M4 9v6h4l5 4V5l-5 4H4z"/><path d="M16 9c1.3 1.6 1.3 4.4 0 6"/></svg>
         <span id="muteLabel">声音开</span>
       </button>
+      <button class="cmd-trigger" id="cmdTrigger" type="button" aria-label="打开快速命令">⌘K</button>
     </header>
 
     <!-- ========== 视图：航行 ========== -->
@@ -1217,12 +1325,24 @@ body.theme-cb{--beacon:#58B6E0;--beacon-deep:#1D5D78;--flare:#D97AB2}
 
           <div class="deck" id="deck">
             <canvas id="sceneCanvas" aria-hidden="true"></canvas>
+            <div class="rest-breath" id="restBreath" aria-hidden="true">
+              <span class="rb-halo"></span>
+              <span class="rb-core"></span>
+              <span class="rb-label">BREATHE</span>
+            </div>
             <span class="scene-tick tl" aria-hidden="true"></span>
             <span class="scene-tick br" aria-hidden="true"></span>
             <span class="scene-hair" aria-hidden="true"></span>
             <div class="deck-hud">
               <div class="deck-top">
-                <span class="dial-state" id="dialState">STANDBY</span>
+                <div class="status-island" id="dialState" data-state="idle" aria-live="polite">
+                  <span class="si-orb" aria-hidden="true"></span>
+                  <span class="si-label" id="dialStateText">STANDBY</span>
+                  <span class="si-extra" aria-hidden="true">
+                    <span class="si-ring" id="siRing"></span>
+                    <span class="si-time" id="siTime">25:00</span>
+                  </span>
+                </div>
                 <span class="away-tag mono" id="awayTag" hidden>离开 1/3</span>
                 <button class="deck-toggle" id="deckToggle" type="button" aria-pressed="false">
                   <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14"/><path d="M3 16l5-5 4 4 4-4 5 5"/></svg>
@@ -1312,6 +1432,14 @@ body.theme-cb{--beacon:#58B6E0;--beacon-deep:#1D5D78;--flare:#D97AB2}
                 <span>引擎低频</span>
               </button>
             </div>
+          </div>
+
+          <div class="ambient-wave" id="ambientWave" hidden aria-hidden="true">
+            <span class="aw-key">SIGNAL</span>
+            <div class="aw-bars" id="awBars">
+              <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+            </div>
+            <span class="aw-label" id="awLabel">LIVE</span>
           </div>
 
           <div class="hold-bar" id="holdBar" hidden>
@@ -1917,6 +2045,17 @@ body.theme-cb{--beacon:#58B6E0;--beacon-deep:#1D5D78;--flare:#D97AB2}
   <div class="tour-panel" data-tour="right"></div>
   <div class="tour-ring" id="loginTourRing"></div>
 </div>
+<div class="modal" id="cmdModal" hidden role="dialog" aria-modal="true" aria-label="快速命令">
+  <div class="cmd-panel">
+    <div class="cmd-head">
+      <span class="cmd-glyph">⌘</span>
+      <input id="cmdInput" type="text" autocomplete="off" spellcheck="false" placeholder="输入命令，如 启动 / 统计 / 导出">
+      <span class="cmd-esc">ESC</span>
+    </div>
+    <div class="cmd-list" id="cmdList"></div>
+    <p class="cmd-foot">↑↓ 选择 · Enter 执行 · ⌘K / Ctrl+K 随时召回</p>
+  </div>
+</div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script>
@@ -2108,17 +2247,17 @@ function migrateState(parsed) {
 }
 function loadState() {
   let raw = null;
-  try { raw = localStorage.getItem(STORE_KEY); } catch (err) { return defaultState(); }
+  try { raw = localStorage.getItem(STORE_KEY); } catch { return defaultState(); }
   if (!raw) return defaultState();
   let parsed = null;
-  try { parsed = JSON.parse(raw); } catch (err) {
+  try { parsed = JSON.parse(raw); } catch {
     // 坏数据留档，别直接抹掉
-    try { localStorage.setItem(STORE_KEY + '-broken-' + Date.now(), raw); } catch (e2) {}
+    try { localStorage.setItem(STORE_KEY + '-broken-' + Date.now(), raw); } catch {}
     return defaultState();
   }
   if (!parsed || typeof parsed !== 'object') return defaultState();
-  try { return migrateState(parsed); } catch (err) {
-    try { localStorage.setItem(STORE_KEY + '-broken-' + Date.now(), raw); } catch (e2) {}
+  try { return migrateState(parsed); } catch {
+    try { localStorage.setItem(STORE_KEY + '-broken-' + Date.now(), raw); } catch {}
     return defaultState();
   }
 }
@@ -2126,7 +2265,7 @@ let S = loadState();
 
 let saveTimer = null;
 function save() {
-  try { localStorage.setItem(STORE_KEY, JSON.stringify(S)); } catch (err) { /* 存储不可用时静默降级 */ }
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(S)); } catch { /* 存储不可用时静默降级 */ }
   scheduleCloudPush();
 }
 function saveSoon() {
@@ -2326,10 +2465,10 @@ function acquireWake() {
       wakeLock = lock;
       lock.addEventListener('release', function () { wakeLock = null; });
     }).catch(function () {});
-  } catch (err) {}
+  } catch {}
 }
 function releaseWake() {
-  if (wakeLock) { try { wakeLock.release(); } catch (err) {} wakeLock = null; }
+  if (wakeLock) { try { wakeLock.release(); } catch {} wakeLock = null; }
 }
 
 function quickStartTemplate(title, minutes) {
@@ -2461,7 +2600,7 @@ function finishTimer(completed, reason, opts) {
     setTimeout(function () {
       try {
         showVoyageCard(S.sessions[S.sessions.length - 1], computeMetrics(), m.sectorIdx > beforeIdx);
-      } catch (err) {
+      } catch {
         showToast('抵达 · 本段 +' + Math.round(focusSec / 60) + ' ly · ' + sector.name);
       }
     }, 560);
@@ -2740,7 +2879,7 @@ async function shareVoyageCard() {
   try {
     const text = lastCardKind === 'captain' ? '我的远星航程船长档案' : (lastCardKind === 'weekly' ? '我的远星航程周报' : '刚完成一段航程');
     await navigator.share({ files: [f], title: '远星航程', text: text });
-  } catch (e) { /* 用户取消 */ }
+  } catch { /* 用户取消 */ }
 }
 function saveVoyageCard() {
   if (!lastCard) return;
@@ -2803,7 +2942,17 @@ function tick() {
 }
 
 /* ---------- 仪表盘渲染 ---------- */
-let lastStateLabel = '';
+function setStatusCapsule(state, label, timeText, ratio) {
+  const el = $('#dialState');
+  if (!el) return;
+  if (el.dataset.state !== state) el.dataset.state = state;
+  const text = $('#dialStateText');
+  if (text && text.textContent !== label) text.textContent = label;
+  const time = $('#siTime');
+  if (time) time.textContent = timeText;
+  const ring = $('#siRing');
+  if (ring) ring.style.setProperty('--p', String(clamp(ratio || 0, 0, 1)));
+}
 function renderTimer() {
   const rest = S.rest;
   if (rest) {
@@ -2814,7 +2963,7 @@ function renderTimer() {
     $('#dialTime').classList.toggle('is-low', remain <= 60);
     document.body.classList.remove('is-cruising');
     document.body.classList.add('is-docked');
-    if (lastStateLabel !== 'DOWNTIME') { $('#dialState').textContent = 'DOWNTIME'; lastStateLabel = 'DOWNTIME'; }
+    setStatusCapsule('docked', 'DOWNTIME', fmtClock(remain), planned ? el / planned : 0);
     const bar = $('#progressBar');
     if (bar) bar.style.width = ((el / planned) * 100).toFixed(2) + '%';
     const ly = $('#deckLy');
@@ -2843,12 +2992,9 @@ function renderTimer() {
 
   document.body.classList.toggle('is-cruising', !!(a && a.running));
   const label = S.mode === 'rest' ? 'DOWNTIME' : (!a ? 'STANDBY' : (a.running ? 'CRUISING' : 'HOLD'));
-  if (label !== lastStateLabel) {
-    $('#dialState').textContent = label;
-    lastStateLabel = label;
-  }
 
   const ratio = a ? clamp(elapsed / planned, 0, 1) : 0;
+  setStatusCapsule(!a ? 'idle' : (a.running ? 'cruising' : 'hold'), label, fmtClock(remain), ratio);
   const bar = $('#progressBar');
   if (bar) bar.style.width = (ratio * 100).toFixed(2) + '%';
   const ly = $('#deckLy');
@@ -3034,7 +3180,7 @@ function goLoginGuide() {
     if (group) group.scrollIntoView({ behavior: 'smooth', block: 'center' });
     setTimeout(function () {
       const input = !$('#cloudAuth').hidden ? $('#cloudAccountName') : $('#cloudUrl');
-      if (input) { try { input.focus({ preventScroll: true }); } catch (e) { input.focus(); } }
+      if (input) { try { input.focus({ preventScroll: true }); } catch { input.focus(); } }
     }, 380);
   }, 220);
 }
@@ -3365,7 +3511,7 @@ function renderVoyage() {
       routeMeta.innerHTML = '有了任务，这里会按段数自动排好顺序。';
     } else {
       const dur = S.settings.duration, rest = S.settings.restDuration;
-      let html = '', n = 0;
+      let html = '';
       const show = Math.min(segs, 4);
       for (let i = 0; i < show; i++) {
         if (i) html += '<span class="route-rest">+ ' + rest + '′ 休整</span>';
@@ -3511,7 +3657,7 @@ function renderMissions() {
       '" aria-label="标记完成" data-act="toggle" data-id="' + m.id + '"><i></i></button>' +
       '<div class="mission-main"><div class="mission-title">' + escapeHTML(m.title) + '</div>' +
       '<div class="mission-meta">' + (m.tag ? '<span class="mtag">' + m.tag + '</span>' : '') +
-        (doneSegs ? '进度 ' + Math.min(doneSegs, segs) + '/' + segs + ' 段 · ' : '预计 ' + segs + ' 段 · ') +
+        (prog || '预计 ' + segs + ' 段 · ') +
         '约 ' + fmtMin(mins) + ' 分钟</div>' +
       '<div class="mission-pbar" aria-hidden="true"><i style="transform:scaleX(' + barPct.toFixed(2) + ')"></i></div></div>' +
       '<div class="mission-acts">' +
@@ -3549,7 +3695,6 @@ function metricsAt(session) {
 function renderLog() {
   const list = $('#logList');
   const total = S.sessions.length;
-  const doneN = S.sessions.filter(function (s) { return s.completed; }).length;
   const mm = computeMetrics();
   const totalText = mm.allMin >= 60 ? fmtMin(mm.allMin) + ' 分' : Math.round(mm.allMin) + ' 分钟';
   $('#logCount').textContent = '累计专注 ' + totalText + ' · ' + mm.totalLy + ' ly';
@@ -4067,6 +4212,7 @@ const HEAT_SLOTS = [
   { k: '夜', from: 0, to: 6 }, { k: '早', from: 6, to: 12 },
   { k: '午', from: 12, to: 18 }, { k: '晚', from: 18, to: 24 }
 ];
+let heatPlayed = false;
 function renderHeatmap() {
   const wrap = $('#heatWrap'), hint = $('#heatHint');
   if (!wrap) return;
@@ -4085,6 +4231,10 @@ function renderHeatmap() {
   Object.keys(grid).forEach(function (k) {
     if (grid[k] > max) { max = grid[k]; top = k; }
   });
+  const sig = Object.keys(grid).sort().map(function (k) { return k + ':' + grid[k]; }).join('|');
+  if (heatPlayed && wrap.dataset.heatSig === sig) return;
+  const animate = !heatPlayed && !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  heatPlayed = true;
   const wds = ['一', '二', '三', '四', '五', '六', '日'];
   let html = '<div class="heat-top"></div>';
   HEAT_SLOTS.forEach(function (t) { html += '<div class="heat-top">' + t.k + '</div>'; });
@@ -4094,10 +4244,12 @@ function renderHeatmap() {
       const n = grid[wi + '-' + si] || 0;
       const a = max ? Math.min(0.92, 0.1 + (n / max) * 0.75) : 0;
       const hot = max && n === max ? ' hot' : '';
-      html += '<div class="heat-cell' + hot + '" style="background:rgba(240,163,62,' + a.toFixed(2) + ');" title="周' + w + ' ' + t.k + '：中断 ' + n + ' 次">' + (n || '') + '</div>';
+      const idx = wi * HEAT_SLOTS.length + si;
+      html += '<div class="heat-cell' + hot + (animate ? ' heat-anim' : '') + '" style="--i:' + idx + ';background:rgba(240,163,62,' + a.toFixed(2) + ');" title="周' + w + ' ' + t.k + '：中断 ' + n + ' 次">' + (n || '') + '</div>';
     });
   });
   wrap.innerHTML = html;
+  wrap.dataset.heatSig = sig;
   if (!hint) return;
   if (!top) { hint.textContent = '还没有中断记录。保持这个节奏。'; return; }
   const tw = Number(top.split('-')[0]), ts = Number(top.split('-')[1]);
@@ -4127,7 +4279,6 @@ function exportDigest() {
     const ts = new Date(parts[0], parts[1] - 1, parts[2]);
     md += '## ' + dateCN(ts) + ' ' + weekdayCN(ts) + '\n\n';
     days[k].sort(function (a, b) { return a.start - b.start; }).forEach(function (x) {
-      const d = new Date(x.end);
       md += '- ' + clockOf(x.start) + '–' + clockOf(x.end) + ' · ' + Math.round((x.focusSec || 0) / 60) + ' 分钟 · ';
       md += (x.completed ? '抵达' : '中断（' + (x.reason || '未记原因') + '）');
       if (x.taskTitle) md += ' · ' + x.taskTitle;
@@ -4575,19 +4726,18 @@ function isTestAccount() { return cloudIsTest || !!(cloudUser && cloudUser.id ==
 let cloudAuthBusy = false;
 let cloudAuthPending = null;
 let cloudAuthMode = 'login';
-let cloudAuthChecked = false;
 let cloudSdkFailed = false;
 
 function loadCloudCfg() {
   let raw = null;
-  try { raw = localStorage.getItem(CLOUD_CFG_KEY); } catch (e) { raw = null; }
+  try { raw = localStorage.getItem(CLOUD_CFG_KEY); } catch { raw = null; }
   if (raw) {
     try {
       const p = JSON.parse(raw);
       if (p && p.cleared) { cloudCfg = null; return null; }
       cloudCfg = (p && p.url && p.key) ? p : null;
       return cloudCfg;
-    } catch (e) { cloudCfg = null; return null; }
+    } catch { cloudCfg = null; return null; }
   }
   cloudCfg = DEFAULT_CLOUD_CFG ? Object.assign({}, DEFAULT_CLOUD_CFG) : null;
   return cloudCfg;
@@ -4596,7 +4746,7 @@ function writeCloudCfg(cfg) {
   cloudCfg = cfg;
   try {
     localStorage.setItem(CLOUD_CFG_KEY, cfg ? JSON.stringify(cfg) : JSON.stringify({ cleared: true }));
-  } catch (e) { /* 忽略 */ }
+  } catch { /* 忽略 */ }
 }
 function setCloudMsg(el, text, kind) {
   if (!el) return;
@@ -4648,7 +4798,6 @@ function connectCloud(cb) {
   setCloudMsg($('#cloudMsg'), '正在加载云端模块…');
   loadCloudSdk(function (ok) {
     if (!ok) {
-      cloudAuthChecked = true;
       cloudSdkFailed = true;
       setCloudMsg($('#cloudMsg'), '云端模块没加载出来，可能处于离线状态', 'bad');
       markLoginGuideReady();
@@ -4659,10 +4808,9 @@ function connectCloud(cb) {
       cloudClient = window.supabase.createClient(cloudCfg.url, cloudCfg.key, {
         auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false }
       });
-    } catch (e) {
+    } catch {
       cloudClient = null;
       cloudSdkFailed = true;
-      cloudAuthChecked = true;
       setCloudMsg($('#cloudSetupMsg'), '项目地址或密钥格式不对', 'bad');
       markLoginGuideReady();
       if (cb) cb(false);
@@ -4671,7 +4819,6 @@ function connectCloud(cb) {
     cloudSdkFailed = false;
     loadLeaderboard(true);
     cloudClient.auth.onAuthStateChange(function (evt, sess) {
-      cloudAuthChecked = true;
       cloudSdkFailed = false;
       markLoginGuideReady();
       const was = cloudUser && cloudUser.id;
@@ -4681,7 +4828,6 @@ function connectCloud(cb) {
       if (cloudUser && (!was || was !== cloudUser.id)) afterSignIn();
     });
     cloudClient.auth.getSession().then(function (res) {
-      cloudAuthChecked = true;
       cloudSdkFailed = false;
       markLoginGuideReady();
       const sess = res && res.data && res.data.session;
@@ -4690,7 +4836,6 @@ function connectCloud(cb) {
       if (cloudUser) afterSignIn();
       else { setCloudMsg($('#cloudMsg'), ''); if (cb) cb(true); }
     }).catch(function () {
-      cloudAuthChecked = true;
       cloudSdkFailed = true;
       markLoginGuideReady();
       if (cb) cb(true);
@@ -4806,7 +4951,7 @@ function trackFleet() {
   try {
     fleetCh.track({ nick: (S.settings.fleetNick || '舰长'), ly: todayLy(), week: weekLy(),
       ach: unlockedBadgeCount(), ship: shipState().cur.name, at: Date.now() });
-  } catch (e) {}
+  } catch {}
 }
 
 function leaderboardPayload() {
@@ -4916,10 +5061,10 @@ function setupPresence() {
     fleetCh.subscribe(function (status) {
       if (status === 'SUBSCRIBED') trackFleet();
     });
-  } catch (err) { renderFleet(0); }
+  } catch { renderFleet(0); }
 }
 function teardownPresence() {
-  if (fleetCh && cloudClient) { try { cloudClient.removeChannel(fleetCh); } catch (e) {} }
+  if (fleetCh && cloudClient) { try { cloudClient.removeChannel(fleetCh); } catch {} }
   fleetCh = null;
   renderFleet(0);
 }
@@ -5037,7 +5182,7 @@ function mergePreviewDetails(remoteData) {
     }
   };
 }
-function showMergePreview(remoteData, updatedAt, remoteN) {
+function showMergePreview(remoteData, updatedAt) {
   const pv = mergePreviewDetails(remoteData), a = pv.after, add = pv.added;
   const lines = [
     '本地 ' + pv.local.sessions + ' 段 / 云端 ' + pv.remote.sessions + ' 段；合并后 ' + a.sessions + ' 段，新增 ' + add.sessions + ' 段。',
@@ -5126,7 +5271,7 @@ function afterSignIn() {
       return;
     }
 
-    showMergePreview(remoteData, res.data.updated_at, remoteN);
+    showMergePreview(remoteData, res.data.updated_at);
   });
 }
 
@@ -5209,7 +5354,7 @@ function signInWithEmail(email, pass) {
 function setCloudAuthMode(mode) {
   cloudAuthMode = mode || 'login';
   const account = $('#cloudAccountName'), email = $('#cloudEmail'), pass = $('#cloudPass');
-  const title = $('#cloudAuthTitle'), hint = $('#cloudAuthHint'), login = $('#cloudLoginBtn');
+  const hint = $('#cloudAuthHint'), login = $('#cloudLoginBtn');
   const signup = $('#cloudSignupBtn'), reset = $('#cloudResetBtn'), forget = $('#cloudForgetBtn');
   if (!account || !email || !pass || !login || !signup) return;
   const isSignup = cloudAuthMode === 'signup', isReset = cloudAuthMode === 'reset';
@@ -5494,23 +5639,44 @@ function renderMeta() {
   $('#viewSub').textContent = subs[view] || '';
 }
 
+let viewTransition = null;
 function setView(id) {
   if (!viewAvailable(id)) id = 'voyage';
-  $$('.view').forEach(function (v) {
-    v.classList.toggle('is-active', v.id === 'view-' + id);
-  });
-  $$('.rail-link').forEach(function (a) {
-    if (a.dataset.view === id) a.setAttribute('aria-current', 'page');
-    else a.removeAttribute('aria-current');
-  });
-  const active = $('#view-' + id);
-  if (active) $('#viewTitle').textContent = active.dataset.title || '航行台';
-  if (id === 'voyage') syncAmbientIndicator();
-  if (id === 'stats') renderStats();
-  if (id === 'badges') renderBadges();
-  if (id === 'settings') renderSettings();
-  renderMeta();
-  window.scrollTo({ top: 0, behavior: 'auto' });
+  const previous = document.querySelector('.view.is-active');
+  const previousId = previous ? previous.id : '';
+  const apply = function () {
+    $$('.view').forEach(function (v) {
+      v.classList.toggle('is-active', v.id === 'view-' + id);
+    });
+    $$('.rail-link').forEach(function (a) {
+      if (a.dataset.view === id) a.setAttribute('aria-current', 'page');
+      else a.removeAttribute('aria-current');
+    });
+    const active = $('#view-' + id);
+    if (active) $('#viewTitle').textContent = active.dataset.title || '航行台';
+    if (id === 'voyage') syncAmbientIndicator();
+    if (id === 'stats') { heatPlayed = false; renderStats(); }
+    if (id === 'badges') renderBadges();
+    if (id === 'settings') renderSettings();
+    renderMeta();
+    window.scrollTo({ top: 0, behavior: 'auto' });
+  };
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (document.startViewTransition && previousId && previousId !== 'view-' + id && !viewTransition && !reduce) {
+    try {
+      document.documentElement.classList.add('is-vt');
+      const vt = document.startViewTransition(apply);
+      viewTransition = vt;
+      vt.finished.catch(function () {}).finally(function () {
+        document.documentElement.classList.remove('is-vt');
+        if (viewTransition === vt) viewTransition = null;
+      });
+      return;
+    } catch {
+      document.documentElement.classList.remove('is-vt');
+    }
+  }
+  apply();
 }
 
 /* ---------- 提示 / 模态 ---------- */
@@ -5520,7 +5686,7 @@ function notifySystem(title, body){
     if (!S.settings.notify || !document.hidden) return;
     if (!('Notification' in window) || Notification.permission !== 'granted') return;
     new Notification(title, { body: body, tag: 'yuanxing-voyage' });
-  } catch (err) {}
+  } catch {}
 }
 
 function updateStarCount() {
@@ -5765,7 +5931,7 @@ function ensureCtx() {
     }
     if (AC.state === 'suspended') AC.resume();
     return AC;
-  } catch (err) {
+  } catch {
     return null;
   }
 }
@@ -5801,25 +5967,57 @@ function playCue(kind) {
   else if (kind === 'abort') { tone(196, 0.3, 0, 0.12); tone(147, 0.45, 0.28, 0.1); }
 }
 
+function hideAmbientWave() {
+  const wave = $('#ambientWave');
+  if (wave) wave.hidden = true;
+}
+function startAmbientWave(nodes) {
+  const wave = $('#ambientWave');
+  const bars = $$('#awBars i');
+  if (!wave || !bars.length || !nodes.analyser) return;
+  wave.hidden = false;
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    bars.forEach(function (bar) { bar.style.transform = 'scaleY(.38)'; });
+    return;
+  }
+  const data = new Uint8Array(nodes.analyser.frequencyBinCount);
+  const draw = function () {
+    nodes.analyser.getByteFrequencyData(data);
+    bars.forEach(function (bar, i) {
+      const v = data[Math.min(data.length - 1, i * 2 + 1)] / 255;
+      bar.style.transform = 'scaleY(' + (0.24 + Math.pow(v, 1.35) * 0.92).toFixed(3) + ')';
+      bar.style.opacity = String(0.38 + v * 0.55);
+    });
+    nodes.raf = requestAnimationFrame(draw);
+  };
+  nodes.raf = requestAnimationFrame(draw);
+}
+
 function stopAmbient(fade) {
-  if (!ambientNodes || !AC) { ambientNodes = null; return; }
+  if (!ambientNodes || !AC) {
+    ambientNodes = null;
+    hideAmbientWave();
+    return;
+  }
   const nodes = ambientNodes;
+  if (nodes.raf) cancelAnimationFrame(nodes.raf);
+  hideAmbientWave();
   ambientNodes = null;
   try {
     if (fade) nodes.gain.gain.setTargetAtTime(0.0001, AC.currentTime, 0.15);
     else nodes.gain.gain.value = 0.0001;
     setTimeout(function () {
-      try { nodes.src.stop(); } catch (e) {}
-      if (nodes.osc) { try { nodes.osc.stop(); } catch (e) {} }
+      try { nodes.src.stop(); } catch {}
+      if (nodes.osc) { try { nodes.osc.stop(); } catch {} }
     }, fade ? 420 : 60);
-  } catch (err) { /* 忽略音频节点关闭异常 */ }
+  } catch { /* 忽略音频节点关闭异常 */ }
 }
 
 function startAmbient() {
   const kind = S.settings.ambient;
-  if (kind === 'none' || S.settings.muted || !S.active || !S.active.running) return;
+  if (kind === 'none' || S.settings.muted || !S.active || !S.active.running) { hideAmbientWave(); return; }
   const ctx = ensureCtx();
-  if (!ctx) return;
+  if (!ctx) { hideAmbientWave(); return; }
   stopAmbient(false);
 
   const len = Math.floor(ctx.sampleRate * 3.5);
@@ -5847,6 +6045,14 @@ function startAmbient() {
   filter.connect(gain);
   gain.connect(master);
 
+  let analyser = null;
+  try {
+    analyser = ctx.createAnalyser();
+    analyser.fftSize = 64;
+    analyser.smoothingTimeConstant = 0.72;
+    gain.connect(analyser);
+  } catch { analyser = null; }
+
   let osc = null;
   if (kind === 'engine') {
     osc = ctx.createOscillator();
@@ -5860,7 +6066,8 @@ function startAmbient() {
   }
 
   src.start();
-  ambientNodes = { src: src, gain: gain, osc: osc };
+  ambientNodes = { src: src, gain: gain, osc: osc, analyser: analyser, raf: 0 };
+  startAmbientWave(ambientNodes);
 }
 
 /* ---------- 深空背景 ---------- */
@@ -5992,7 +6199,7 @@ function readSnaps() {
   try {
     const arr = JSON.parse(localStorage.getItem(SNAP_KEY) || '[]');
     return Array.isArray(arr) ? arr : [];
-  } catch (err) { return []; }
+  } catch { return []; }
 }
 function maybeSnapshot() {
   if (!S.sessions.length && !S.missions.length) return;
@@ -6003,7 +6210,7 @@ function maybeSnapshot() {
     arr.push({ at: Date.now(), data: JSON.parse(JSON.stringify(S)) });
     while (arr.length > SNAP_KEEP) arr.shift();
     localStorage.setItem(SNAP_KEY, JSON.stringify(arr));
-  } catch (err) {}
+  } catch {}
 }
 function snapLabel() {
   const arr = readSnaps();
@@ -6016,7 +6223,7 @@ function saveSyncSnapshot(label) {
     arr.push({ at: Date.now(), label: label || '同步前', data: JSON.parse(JSON.stringify(S)) });
     while (arr.length > SNAP_KEEP) arr.shift();
     localStorage.setItem(SNAP_KEY, JSON.stringify(arr));
-  } catch (err) {}
+  } catch {}
 }
 function openSyncRestore() {
   setAdvancedOpen = true;
@@ -6039,7 +6246,7 @@ function restoreSnapshot() {
     confirmText: '恢复快照',
     cancelText: '取消',
     onConfirm: function () {
-      try { localStorage.setItem(STORE_KEY + '-preimport-' + Date.now(), JSON.stringify(S)); } catch (err) {}
+      try { localStorage.setItem(STORE_KEY + '-preimport-' + Date.now(), JSON.stringify(S)); } catch {}
       S = migrateState(last.data);
       S.active = null;
       S.rest = null;
@@ -6070,10 +6277,10 @@ function writeDraft() {
       taskTitle: S.active.taskTitle || '未指派任务',
       start: S.active.startAt || Date.now()
     }));
-  } catch (err) {}
+  } catch {}
 }
 function clearDraft() {
-  try { localStorage.removeItem(DRAFT_KEY); } catch (err) {}
+  try { localStorage.removeItem(DRAFT_KEY); } catch {}
 }
 function readDraft() {
   try {
@@ -6083,7 +6290,7 @@ function readDraft() {
     if (!d || !(d.elapsed >= 1) || !(d.plannedSec >= 60)) { clearDraft(); return null; }
     if (Date.now() - (d.at || 0) > DRAFT_MAX_AGE) { clearDraft(); return null; }
     return d;
-  } catch (err) { return null; }
+  } catch { return null; }
 }
 function draftAsSession(d) {
   S.sessions.push({
@@ -6293,6 +6500,128 @@ function setDuration(v) {
 }
 
 /* ---------- 事件绑定 ---------- */
+/* ---------- 快速命令面板 ---------- */
+let commandOpen = false;
+let commandItems = [];
+let commandSelection = 0;
+function commandActions() {
+  const a = S.active;
+  const activeView = currentView();
+  const items = [
+    { id: 'timer', icon: a && a.running ? 'Ⅱ' : '▶', label: a && a.running ? '暂停航程' : (a ? '继续航程' : '启动航程'),
+      sub: a ? ('本段计划 ' + Math.round(a.plannedSec / 60) + ' 分钟') : ('默认 ' + S.settings.duration + ' 分钟'), key: 'SPACE',
+      keywords: 'timer start pause resume 启动 暂停 继续 计时 航程', run: toggleStart },
+    { id: 'rest', icon: '✦', label: S.rest ? '提前结束休整' : '开始休整',
+      sub: S.rest ? '不记为完成，直接回航线' : ('先靠港 ' + S.settings.restDuration + ' 分钟'), key: '',
+      keywords: 'rest break 休整 休息 靠港', run: function () {
+        if (S.rest) { finishRest(false, '快速命令'); return; }
+        setMode('rest');
+        if (S.mode === 'rest') startRest();
+      } },
+    { id: 'finish', icon: '■', label: S.active ? '结束本段航程' : '完成休整',
+      sub: S.active ? '记为完成并写入日志' : (S.rest ? '记为休整并写入日志' : '当前没有进行中的航程'), key: '',
+      keywords: 'finish end 完成 结束 返航 记录', run: function () {
+        if (S.active) finishTimer(true, '快速命令');
+        else if (S.rest) finishRest(true, '快速命令');
+        else showToast('当前没有进行中的航程。');
+      } },
+    { id: 'view-voyage', icon: '◎', label: '航行台', sub: activeView === 'voyage' ? '当前视图' : '回到计时与舷窗', key: '1',
+      keywords: 'voyage home 航行 主页 计时', run: function () { location.hash = '#voyage'; setView('voyage'); } },
+    { id: 'view-stats', icon: '▤', label: '航行统计', sub: activeView === 'stats' ? '当前视图' : '热力图、周对比与图表', key: '4',
+      keywords: 'stats chart 统计 图表 热力图 周报', run: function () { location.hash = '#stats'; setView('stats'); } },
+    { id: 'view-log', icon: '≡', label: '航行日志', sub: activeView === 'log' ? '当前视图' : '查看每一段航程明细', key: '3',
+      keywords: 'log history 日志 记录 明细', run: function () { location.hash = '#log'; setView('log'); } },
+    { id: 'view-missions', icon: '☰', label: '航程任务', sub: activeView === 'missions' ? '当前视图' : '把里程挂到具体任务上', key: '2',
+      keywords: 'missions task 任务 待办 清单', run: function () { location.hash = '#missions'; setView('missions'); } },
+    { id: 'view-badges', icon: '✧', label: '成就与称号', sub: activeView === 'badges' ? '当前视图' : '查看已解锁的徽记', key: '5',
+      keywords: 'badges achievement 成就 称号 徽记', run: function () { location.hash = '#badges'; setView('badges'); } },
+    { id: 'view-settings', icon: '⚙', label: '设置', sub: activeView === 'settings' ? '当前视图' : '时长、云端与显示', key: '6',
+      keywords: 'settings config 设置 配置 云端 显示', run: function () { location.hash = '#settings'; setView('settings'); } },
+    { id: 'export', icon: '↧', label: '导出航程数据', sub: '下载一份 JSON 备份', key: '',
+      keywords: 'export backup 导出 备份 json', run: function () { const btn = $('#exportBtn'); if (btn) btn.click(); } },
+    { id: 'weekly', icon: '◫', label: '导出周记', sub: '生成本周航行卡', key: '',
+      keywords: 'weekly digest 周记 周报 卡片 导出', run: function () { exportDigest(); } },
+    { id: 'frame', icon: '▣', label: '星屑兑换', sub: '换一张航程卡边框', key: '',
+      keywords: 'frame shop 星屑 兑换 边框', run: function () { openFrameShop(); } },
+    { id: 'sync', icon: '⌁', label: '同步与恢复点', sub: '查看云端同步状态', key: '',
+      keywords: 'sync cloud 同步 云端 恢复', run: function () { openSyncRestore(); } }
+  ];
+  if (!cloudUser) items.push({
+    id: 'login', icon: '☁', label: '登录云端账号', sub: '登录后航程才会保存到云端', key: '',
+    keywords: 'login account cloud 登录 账号 云端', run: function () { goLoginGuide(); }
+  });
+  return items.filter(function (item) {
+    return item.id !== 'finish' || !!S.active || !!S.rest;
+  });
+}
+function renderCommandList(query) {
+  const list = $('#cmdList');
+  if (!list) return;
+  const q = String(query || '').trim().toLowerCase();
+  const visible = commandItems.filter(function (item) {
+    return !q || (item.label + ' ' + item.sub + ' ' + item.keywords).toLowerCase().indexOf(q) >= 0;
+  });
+  if (!visible.length) {
+    list.innerHTML = '<div class="cmd-empty">没有匹配的命令，换个词试试。</div>';
+    commandSelection = 0;
+    return;
+  }
+  commandSelection = clamp(commandSelection, 0, visible.length - 1);
+  list.innerHTML = visible.map(function (item, i) {
+    return '<div class="cmd-item' + (i === commandSelection ? ' is-on' : '') + '" data-id="' + item.id + '" role="option" aria-selected="' + (i === commandSelection) + '">' +
+      '<span class="cmd-ico">' + item.icon + '</span>' +
+      '<span class="cmd-copy"><span class="cmd-label">' + item.label + '</span><span class="cmd-sub">' + item.sub + '</span></span>' +
+      '<span class="cmd-key">' + (item.key || '') + '</span></div>';
+  }).join('');
+  const on = list.querySelector('.cmd-item.is-on');
+  if (on) on.scrollIntoView({ block: 'nearest' });
+}
+function openCommandPalette() {
+  if (commandOpen) return;
+  commandOpen = true;
+  commandItems = commandActions();
+  commandSelection = 0;
+  const modal = $('#cmdModal');
+  const input = $('#cmdInput');
+  if (!modal || !input) return;
+  modal.hidden = false;
+  input.value = '';
+  renderCommandList('');
+  requestAnimationFrame(function () {
+    modal.classList.add('is-open');
+    input.focus();
+  });
+}
+function closeCommandPalette() {
+  if (!commandOpen) return;
+  commandOpen = false;
+  const modal = $('#cmdModal');
+  if (modal) modal.classList.remove('is-open');
+  const input = $('#cmdInput');
+  if (input) input.blur();
+  setTimeout(function () {
+    if (!commandOpen && modal) modal.hidden = true;
+  }, 190);
+}
+function runCommand(id) {
+  const item = commandItems.filter(function (x) { return x.id === id; })[0];
+  if (!item) return;
+  closeCommandPalette();
+  setTimeout(function () { item.run(); }, 60);
+}
+function moveCommand(delta) {
+  const list = $('#cmdList');
+  if (!list) return;
+  const items = list.querySelectorAll('.cmd-item');
+  if (!items.length) return;
+  commandSelection = (commandSelection + delta + items.length) % items.length;
+  items.forEach(function (item, i) {
+    item.classList.toggle('is-on', i === commandSelection);
+    item.setAttribute('aria-selected', String(i === commandSelection));
+  });
+  items[commandSelection].scrollIntoView({ block: 'nearest' });
+}
+
 function bindEvents() {
   const clickGuard = function (fn) {
     let last = 0;
@@ -6709,7 +7038,7 @@ function bindEvents() {
       document.body.removeChild(a);
       setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
       showToast('已导出 JSON，请注意保存。');
-    } catch (err) {
+    } catch {
       showToast('导出失败，可以稍后再试。');
     }
   });
@@ -6717,7 +7046,7 @@ function bindEvents() {
   /* ---------- 导入：读取 JSON → 校验 → 预览 → 覆盖 ---------- */
   function importPreview(data) {
     let migrated;
-    try { migrated = migrateState(data); } catch (err) { return null; }
+    try { migrated = migrateState(data); } catch { return null; }
     const list = migrated.sessions.slice().sort(function (a, b) { return a.start - b.start; });
     const from = list.length ? dayKey(list[0].start) : '—';
     const to = list.length ? dayKey(list[list.length - 1].end) : '—';
@@ -6726,7 +7055,7 @@ function bindEvents() {
   function backupBeforeImport() {
     try {
       localStorage.setItem(STORE_KEY + '-preimport-' + Date.now(), JSON.stringify(S));
-    } catch (err) {}
+    } catch {}
   }
   function sessionSig(x) {
     return [x.taskId || '', x.taskTitle || '', x.plannedSec || 0, Math.round((x.start || 0) / 60000)].join('|');
@@ -6778,7 +7107,7 @@ function bindEvents() {
   function handleImportText(text) {
     if (!text || text.length > 8 * 1024 * 1024) { showToast('文件太大或为空，未导入。'); return; }
     let data = null;
-    try { data = JSON.parse(text); } catch (err) { showToast('这个文件不是有效的 JSON，未导入。'); return; }
+    try { data = JSON.parse(text); } catch { showToast('这个文件不是有效的 JSON，未导入。'); return; }
     if (!data || typeof data !== 'object' || !Array.isArray(data.sessions)) {
       showToast('文件里没有航段数据，可能不是远星航程的导出文件。');
       return;
@@ -6810,7 +7139,7 @@ function bindEvents() {
     const reader = new FileReader();
     reader.onload = function () {
       try { handleImportText(String(reader.result || '')); }
-      catch (err) { showToast('读取失败，未导入。'); }
+      catch { showToast('读取失败，未导入。'); }
     };
     reader.onerror = function () { showToast('读取失败，未导入。'); };
     reader.readAsText(file);
@@ -6828,7 +7157,7 @@ function bindEvents() {
       body: '航段、任务与成就进度都会从这台设备删除，无法恢复。建议先导出备份。',
       confirmText: '确认清空',
       onConfirm: function () {
-        try { localStorage.removeItem(STORE_KEY); localStorage.removeItem(DRAFT_KEY); } catch (err) {}
+        try { localStorage.removeItem(STORE_KEY); localStorage.removeItem(DRAFT_KEY); } catch {}
         S = defaultState();
         stopTicking();
         save();
@@ -6919,14 +7248,14 @@ function bindEvents() {
 
   document.addEventListener('visibilitychange', function () {
     if (document.hidden) {
-      try { if (AC && AC.state === 'running' && ambientNodes) AC.suspend(); } catch (e) {}
+      try { if (AC && AC.state === 'running' && ambientNodes) AC.suspend(); } catch {}
       markAway();
       writeDraft();
       save();
       return;
     }
     // 回到前台：用时间戳补齐，而不是等每秒一次的定时器
-    try { if (AC && AC.state === 'suspended' && ambientNodes) AC.resume(); } catch (e) {}
+    try { if (AC && AC.state === 'suspended' && ambientNodes) AC.resume(); } catch {}
     markBack();
     if (S.active || S.rest) beginTicking();
     tick();
@@ -6979,6 +7308,53 @@ function bindEvents() {
   window.addEventListener('load', function () {
     if (currentView() === 'stats') renderStats();
   });
+
+  const cmdTrigger = $('#cmdTrigger');
+  if (cmdTrigger) cmdTrigger.addEventListener('click', openCommandPalette);
+  const cmdModal = $('#cmdModal');
+  if (cmdModal) {
+    cmdModal.addEventListener('click', function (e) {
+      if (e.target === cmdModal) closeCommandPalette();
+    });
+  }
+  const cmdInput = $('#cmdInput');
+  if (cmdInput) {
+    cmdInput.addEventListener('input', function () {
+      commandSelection = 0;
+      renderCommandList(cmdInput.value);
+    });
+  }
+  const cmdList = $('#cmdList');
+  if (cmdList) {
+    cmdList.addEventListener('click', function (e) {
+      const item = e.target.closest('.cmd-item');
+      if (item && item.dataset.id) runCommand(item.dataset.id);
+    });
+  }
+  document.addEventListener('keydown', function (e) {
+    const mod = (e.metaKey || e.ctrlKey) && !e.altKey;
+    if (mod && (e.key === 'k' || e.key === 'K')) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (commandOpen) closeCommandPalette(); else openCommandPalette();
+      return;
+    }
+    if (!commandOpen) return;
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      e.stopPropagation();
+      closeCommandPalette();
+    } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      e.stopPropagation();
+      moveCommand(e.key === 'ArrowDown' ? 1 : -1);
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      e.stopPropagation();
+      const on = $('#cmdList') && $('#cmdList').querySelector('.cmd-item.is-on');
+      if (on && on.dataset.id) runCommand(on.dataset.id);
+    }
+  }, true);
 }
 
 /* ---------- 启动 ---------- */
@@ -6992,9 +7368,9 @@ function playIntro() {
     return;
   }
   let seen = false;
-  try { seen = sessionStorage.getItem('yx-boot') === '1'; } catch (e) {}
+  try { seen = sessionStorage.getItem('yx-boot') === '1'; } catch {}
   if (seen) { bootEl.remove(); reveal(); return; }
-  try { sessionStorage.setItem('yx-boot', '1'); } catch (e) {}
+  try { sessionStorage.setItem('yx-boot', '1'); } catch {}
 
   const msgs = ['校准惯性基准……', '推进系统自检……', '舷窗压力就绪', '点火序列待命'];
   const msgEl = $('#bootMsg');
