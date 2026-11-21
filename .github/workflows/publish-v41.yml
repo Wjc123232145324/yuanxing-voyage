@@ -1,0 +1,38 @@
+name: Publish v41
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/publish-v41.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download v41 from temporary CDN
+        run: |
+          curl -L --fail --retry 3 --retry-delay 2 \
+            'https://aka.doubaocdn.com/s/BN2Ntb6UZ6' \
+            -o '远星航程.html'
+          echo 'ae06266540a63b599abb49442dbb8ae4efd7023f  远星航程.html' | sha1sum -c -
+          ls -l '远星航程.html'
+
+      - name: Commit and push
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add '远星航程.html'
+          if git diff --cached --quiet; then
+            echo 'No changes to commit'
+            exit 0
+          fi
+          git commit -m 'Publish v41 motion'
+          git push origin HEAD:main
